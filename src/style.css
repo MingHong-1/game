@@ -1,0 +1,59 @@
+:root {
+  --page-deep: #031016;
+  --page-background: #06171d;
+  --mist-glow: #17474a;
+  --structure-gold: #9b8756;
+  color-scheme: dark;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#game-shell {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 26%, var(--mist-glow) 0%, var(--page-background) 46%, var(--page-deep) 100%);
+}
+
+#game-shell {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+#game-container {
+  width: 100%;
+  height: 100%;
+  max-width: 1600px;
+  max-height: 900px;
+  overflow: hidden;
+  background: var(--page-deep);
+  border: 1px solid var(--structure-gold);
+  box-shadow:
+    0 0 0 5px rgb(3 16 22 / 76%),
+    0 0 42px rgb(53 201 228 / 10%),
+    0 24px 80px rgb(0 0 0 / 58%);
+}
+
+noscript {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #dceff4;
+  background: var(--page-background);
+}
