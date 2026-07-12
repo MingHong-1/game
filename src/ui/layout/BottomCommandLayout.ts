@@ -36,6 +36,13 @@ export interface BottomCommandLayout {
     readonly slotCenters: readonly UiPoint[];
     readonly slotRects: readonly UiRect[];
     readonly visualBounds: UiRect;
+    readonly selectedInfoBar: UiRect;
+    readonly bottomSafeArea: UiRect;
+    readonly spacingAreas: {
+      readonly infoToFirstRow: UiRect;
+      readonly betweenRows: UiRect;
+      readonly secondRowToBottom: UiRect;
+    };
   };
   readonly right: {
     readonly formation: UiRect;
@@ -60,6 +67,7 @@ export function createBottomCommandLayout(
     metrics.rightColumnWidth -
     metrics.columnGap * 2;
   const columnHeight = deck.height - metrics.paddingY * 2;
+  const centerColumnHeight = deck.height - metrics.paddingY;
   const left = rect(
     metrics.paddingX,
     metrics.paddingY,
@@ -70,7 +78,7 @@ export function createBottomCommandLayout(
     right(left) + metrics.columnGap,
     metrics.paddingY,
     centerWidth,
-    columnHeight,
+    centerColumnHeight,
   );
   const rightColumn = rect(
     right(center) + metrics.columnGap,
@@ -84,9 +92,13 @@ export function createBottomCommandLayout(
   const normalHeight = UI_METRICS.button.height;
   const leftStatTop = left.y + metrics.statRowTop;
   const rightStatTop = rightColumn.y + metrics.statRowTop;
-  const slotCenters = heroSlots.map((slot) => ({
+  const slotCenters = heroSlots.map((slot, index) => ({
     x: slot.x - deck.x,
-    y: slot.y - deck.y,
+    y: index < 5
+      ? metrics.heroBoardBottomRowBaseCenterY +
+        metrics.secondRowVerticalAdjustment
+      : metrics.heroBoardTopRowBaseCenterY +
+        metrics.firstRowVerticalAdjustment,
   }));
   const slotRects = slotCenters.map((point) =>
     rect(
@@ -96,6 +108,17 @@ export function createBottomCommandLayout(
       UI_METRICS.slot.height,
     ),
   );
+  const selectedInfoBar = rect(
+    center.x + UI_METRICS.spacing.internal,
+    center.y + metrics.selectedInfoTop,
+    center.width - UI_METRICS.spacing.internal * 2,
+    metrics.selectedInfoHeight,
+  );
+  const firstRowTop = minimumY(slotRects.slice(5));
+  const firstRowBottom = maximumBottom(slotRects.slice(5));
+  const secondRowTop = minimumY(slotRects.slice(0, 5));
+  const secondRowBottom = maximumBottom(slotRects.slice(0, 5));
+  const centerBottom = bottom(center);
 
   return Object.freeze({
     bounds: rect(0, 0, deck.width, deck.height),
@@ -137,10 +160,37 @@ export function createBottomCommandLayout(
       slotRects: Object.freeze(slotRects),
       visualBounds: rect(
         center.x,
-        -UI_METRICS.spacing.section,
+        0,
         center.width,
-        deck.height + UI_METRICS.spacing.section,
+        deck.height,
       ),
+      selectedInfoBar,
+      bottomSafeArea: rect(
+        center.x,
+        center.y + center.height - metrics.heroBoardBottomSafePadding,
+        center.width,
+        metrics.heroBoardBottomSafePadding,
+      ),
+      spacingAreas: Object.freeze({
+        infoToFirstRow: rect(
+          center.x,
+          bottom(selectedInfoBar),
+          center.width,
+          firstRowTop - bottom(selectedInfoBar),
+        ),
+        betweenRows: rect(
+          center.x,
+          firstRowBottom,
+          center.width,
+          secondRowTop - firstRowBottom,
+        ),
+        secondRowToBottom: rect(
+          center.x,
+          secondRowBottom,
+          center.width,
+          centerBottom - secondRowBottom,
+        ),
+      }),
     }),
     right: Object.freeze({
       formation: rect(
@@ -230,4 +280,14 @@ function right(rectangle: UiRect): number {
 
 function bottom(rectangle: UiRect): number {
   return rectangle.y + rectangle.height;
+}
+
+function minimumY(rectangles: readonly UiRect[]): number {
+  if (rectangles.length === 0) throw new Error('英雄行不能为空');
+  return Math.min(...rectangles.map((rectangle) => rectangle.y));
+}
+
+function maximumBottom(rectangles: readonly UiRect[]): number {
+  if (rectangles.length === 0) throw new Error('英雄行不能为空');
+  return Math.max(...rectangles.map(bottom));
 }

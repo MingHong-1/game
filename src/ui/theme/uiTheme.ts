@@ -21,6 +21,8 @@ export const UI_COLORS = Object.freeze({
   coreWarning: 0xf1c75b,
   coreDanger: 0xf06b6e,
   star: 0xf1d486,
+  slotSelectedOutline: 0xd8fbff,
+  slotSelectedMarker: 0x67e5f2,
   danger: 0x9e3e48,
   dangerHover: 0xc7525b,
   locked: 0x657a83,

@@ -63,13 +63,13 @@
 
 ## 底部指挥台标准
 
-底部 `1248×204` 指挥台由 `BottomCommandLayout` 生成稳定三栏：左栏 296px、中栏 592px、右栏 296px，左右栏间距均为 16px，外侧水平内边距为 16px。左栏只放能量、费用、技能状态和技能预览；中栏只放两排五格和格内解锁提示；右栏依次放编制/扩格卡、整行主召唤按钮、合成/重构按钮。
+底部 `1248×212` 指挥台由 `BottomCommandLayout` 生成稳定三栏：左栏 296px、中栏 592px、右栏 296px，左右栏间距均为 16px，外侧水平内边距为 16px。左栏只放能量、费用、技能状态和技能预览；中栏顶部放 576×28 选中信息条，其下放两排五格；右栏依次放编制/扩格卡、整行主召唤按钮、合成/重构按钮。
 
 间距令牌固定为 4/8/12/16/24px。状态卡高度 44px、常规按钮 40px、紧凑按钮 32px、主召唤按钮 52px。同一行必须使用同一 top 与 height，不允许场景为单个按钮另写基线。三栏和组件矩形位于 `uiMetrics.ts` 与 `BottomCommandLayout.ts`，`PrototypeScene` 只消费结果。
 
 组件语义继续复用长期组件：`Panel` 对应 UiPanel，`ResourceDisplay` 同时承担 StatCard/ProgressCard，`GameButton` 对应 ActionButton，`HeroSlotView` 对应 HeroSlot，`SectionLabel` 统一栏标题。动作按钮支持 primary、secondary、tertiary、danger 和统一 disabled 状态；禁用状态降低透明度和边框权重，不与主操作争夺注意力。
 
-开发构建可用 `?uiDebug=1` 显示三栏边界、组件包围盒、行基线、格位、72px 英雄视觉上限和文字安全区。该覆盖层只在创建时绘制一次，默认关闭，不改变布局、快照、输入或随机结果。
+可用 `?uiDebug=1` 显示三栏边界、组件包围盒、行基线、格位 HitArea、84px 英雄视觉上限、星级分身范围、选中信息条和右侧抽屉边界。该覆盖层只在创建时绘制一次，默认关闭，不改变布局、快照、输入或随机结果。
 
 ## 按钮状态
 
@@ -91,14 +91,30 @@
 `HeroSlotView` 使用统一 80 × 76 卡片，以容纳上下两排各五格：
 
 - 空格：半透明深蓝底、青蓝细边框和淡星核纹路。
-- 已占用：使用英雄主题色轻度高亮，正式纹理或程序 fallback 居中，名称与星级位置固定。
+- 已占用：使用英雄主题色轻度高亮，正式纹理或程序 fallback 居中；默认不常驻显示完整名称和完整星级文案。
 - 锁定：灰蓝底、半透明锁；只有下一个待解锁格显示剩余召唤次数。
 - 新解锁：锁淡出、金色星光扩散，随后英雄淡入缩放出现。
-- 选中：保留金色高亮接口，阶段 2C.2 不接入合成拖拽或站位属性。
+- 选中：使用与职业色、星级金色均不同的青白 2px 外框和右上 6×6px 菱形标记；棋盘顶部的 `SelectedHeroInfoBar` 显示具体实例的名称、精确星级、职业、有效基础攻击和暴击率。
+
+格位内部显示顺序固定为：SlotBackplateLayer → HeroVisual（HeroEchoLayer → HeroMainLayer）→ SlotForegroundLipLayer → SlotStateOverlayLayer（ProfessionOrStarFrame → HoverVisual → SelectedOuterFrame → SelectedMarker → FutureMergeVisual）→ LockOverlayLayer → InteractionHitArea。底板填充永远在英雄后方；占用格的前景唇统一位于局部 `y=43`，宽58px、高2px、Alpha 0.55、距底边8px，只形成轻量脚底前景层；HeroMain 和 Echo 均不使用格位矩形 mask。完整锁遮罩只允许出现在锁定格。
 
 十格从战斗开始时全部可见：下排第 1～5 格开放，上排第 6～10 格锁定并由左至右解锁。上下排共同以画布中心为中轴并独占中央栏；资源技能位于左栏，主要操作位于右栏。只有下一个待解锁格显示剩余召唤次数，更后续格只显示简化锁定状态。
 
+中央栏顶部信息条保持局部 `y=8`、高度 28px；上排通过统一 `firstRowVerticalAdjustment=-5` 从基准 `y=76` 位于 `y=71`，下排通过 `secondRowVerticalAdjustment=-5` 位于 `y=153`。信息条到上排、两排之间、下排到底边的可见边框间距固定为 11/6/7px。下排底板与选中外框不得进入中央栏末端 4px 安全区，脚底和满星光圈使用统一表现偏移避免贴底；不得用缩小英雄或修改单英雄 visualDefinition 代替布局修复。
+
 局内星级只允许 1～4 星。4 星详情文案明确标记“满星”，不提供继续升星语义；满星只限制升星，不灰化格位，也不影响攻击、增益或未来遣散等非升星操作。星级显示统一消费 `HeroStarUiState`，不得在组件内维护独立的 1～5 数组或截断非法输入。
+
+星级战场表现使用纯表现 `HeroStarPresentationModel`：1 星为一个主视觉；2 星为主视觉加一个约 50%～55% 分身；3 星为主视觉加两个约 45%～50% 分身；4 星只显示放大主视觉和受控满星光环。分身是 `HeroBattleView` 内部显示节点，没有实例 ID、HitArea、攻击、伤害、Buff 或统计语义。
+
+格位交互统一使用 normal、hovered、selected、dragging、mergeEligible、mergeHovered、mergeInvalid、maximumStar、locked、disabled 状态和 80×76 逻辑 HitArea。职业/满星身份框是底层身份信息；Hover 是内缩3px的 1px 青色弱内框，Alpha 0.40；Selected 是最外层 2px 青白框，Alpha 1.0，并带右上菱形。selected 可以与 hovered 或 maximumStar 同时可见，且始终强于 Hover；locked、disabled 和未来合成主状态会抑制实例选择反馈。dragging 与 merge 状态当前仅为视觉契约，不产生合成意图或随机消费。
+
+## 右侧信息抽屉
+
+`BattleRightDrawer` 默认收起，展开尺寸为 236×384，覆盖战场右上区域而不移动或压缩战场矩形。正式标签为“怪物情报”和“伤害统计”；开发环境或显式 `?combatDebug=1` / `?uiDebug=1` 时增加“模拟调试”。同一时间只展开一个标签，点击 UI 由抽屉 HitArea 拦截，不应触发后方怪物选择。
+
+- 怪物情报只展示关卡波次、敌人 Definition 和运行时快照中真实存在的名称、类型、数量、HP、护甲、抗性和推进时间；未实现能力不伪造说明。
+- 伤害统计只累计成功应用的 `appliedDamage`，按稳定来源实例记录，再按 heroId 汇总；DPS 使用模拟战斗时间，暂停不增长，关闭抽屉不停止统计，重开清空。
+- 模拟调试承载原 FPS、固定步数、alpha、丢弃时间、敌人/弹道/Tween、seed 和状态等技术字段；正式默认界面不显示这些字段。
 
 ## 宽走廊规范
 
@@ -152,7 +168,7 @@
 
 ## 正式资源接入方式
 
-阶段 2.5 已建立视觉定义与显式 Manifest；阶段 2.5B 将视觉节点冻结为 1/3/4 星。`HeroSlotView` 内部由 `HeroBattleView` 按星级选择正式资源：1～2 星使用 1 星图，3 星按 3→1 回退，4 星按 4→3→1 回退，最后使用程序图形。图片只替换英雄视觉内容，名称、星级、边框、锁定、选中和格位坐标仍由 UI 统一绘制。
+阶段 2.5 已建立视觉定义与显式 Manifest；阶段 2.5B 将视觉节点冻结为 1/3/4 星；阶段 2.5C.2 将 1254×1254 母版离线生成 256×256 运行纹理。`HeroSlotView` 内部由 `HeroBattleView` 按星级选择正式资源：1～2 星使用 1 星图，3 星按 3→1 回退，4 星按 4→3→1 回退，最后使用程序图形。图片只替换英雄视觉内容；精确信息由选中信息条提供，边框、锁定、选中和格位坐标仍由 UI 统一绘制。
 
 `EnemyBattleView` 保持运动根节点与视觉容器分离。图片、Sprite Sheet、受击、缩放、闪白和死亡淡出只作用 `VisualContainer`；`EnemyRootContainer` 的世界位置仍只由移动插值系统写入。主题背景位于道路、敌人、星核和 UI 下方，不能烘焙或改变权威路径坐标。
 

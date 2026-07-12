@@ -32,7 +32,7 @@ const TEST_HERO: HeroVisualDefinition = {
   battle4StarAssetId: 'hero-a.4',
   fallbackColor: 0x123456,
   fallbackShape: 'star',
-  defaultScale: 1,
+  displaySize: 80,
   footAnchor: { x: 0.5, y: 1 },
   portraitAnchor: { x: 0.5, y: 0.5 },
   slotOffset: { x: 0, y: 0 },
@@ -73,13 +73,13 @@ function availableRegistry(assetIds: readonly string[]): AssetRegistry {
 describe('英雄视觉选择', () => {
   it('正式纹理使用独立scale，程序fallback保持原有可读尺寸', () => {
     const maximumDisplaySize = UI_METRICS.slot.heroMaximumDisplaySize;
-    expect(maximumDisplaySize).toBe(72);
-    expect(resolveHeroBodyScale('texture', 0.056, 1_254, 1_254, maximumDisplaySize))
-      .toBeCloseTo(0.056);
-    expect(resolveHeroBodyScale('programmatic', 0.056, 28, 28, maximumDisplaySize))
+    expect(maximumDisplaySize).toBe(84);
+    expect(resolveHeroBodyScale('texture', 80, 256, 256, maximumDisplaySize))
+      .toBeCloseTo(0.3125);
+    expect(resolveHeroBodyScale('programmatic', 80, 28, 28, maximumDisplaySize))
       .toBe(1);
-    expect(resolveHeroBodyScale('texture', 1, 2_000, 1_000, maximumDisplaySize))
-      .toBe(0.036);
+    expect(resolveHeroBodyScale('texture', 100, 2_000, 1_000, maximumDisplaySize))
+      .toBe(0.042);
   });
 
   it('四名运行时英雄在1～4星均选择已加载的1星资源作为当前回退节点', () => {
@@ -109,24 +109,24 @@ describe('英雄视觉选择', () => {
 
   it('四名英雄的scale、脚底锚点和格位偏移完全来自独立视觉定义', () => {
     expect(HERO_VISUAL_REGISTRY.get('gale-hunter')).toMatchObject({
-      defaultScale: 0.056,
-      footAnchor: { x: 0.5, y: 0.86 },
-      slotOffset: { x: 0, y: 0 },
+      displaySize: 80,
+      footAnchor: { x: 0.5, y: 0.93 },
+      slotOffset: { x: 0, y: 39 },
     });
     expect(HERO_VISUAL_REGISTRY.get('ember-mage')).toMatchObject({
-      defaultScale: 0.055,
-      footAnchor: { x: 0.5, y: 0.88 },
-      slotOffset: { x: 0, y: 0 },
+      displaySize: 78,
+      footAnchor: { x: 0.5, y: 0.9 },
+      slotOffset: { x: 0, y: 36 },
     });
     expect(HERO_VISUAL_REGISTRY.get('stone-vanguard')).toMatchObject({
-      defaultScale: 0.053,
-      footAnchor: { x: 0.5, y: 0.85 },
-      slotOffset: { x: 1, y: 0 },
+      displaySize: 78,
+      footAnchor: { x: 0.5, y: 0.89 },
+      slotOffset: { x: 1, y: 35 },
     });
     expect(HERO_VISUAL_REGISTRY.get('starlight-priest')).toMatchObject({
-      defaultScale: 0.054,
-      footAnchor: { x: 0.5, y: 0.88 },
-      slotOffset: { x: 1, y: 0 },
+      displaySize: 78,
+      footAnchor: { x: 0.5, y: 0.89 },
+      slotOffset: { x: 1, y: 35 },
     });
   });
 

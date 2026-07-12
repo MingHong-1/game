@@ -4,18 +4,77 @@
 
 ## 当前阶段
 
-**阶段 2.5C 战斗 UI 标准化与底部指挥台布局重构——已完成工程实现，待 Canvas 人工验收。**
+**阶段 2.5C.2c 实例级选中视觉强化与格位站立横线修复——已完成工程实现，待 Canvas 人工验收。**
 
-底部指挥台已改为资源技能、英雄棋盘、主要操作三栏，并由纯布局模块统一计算矩形。`system-models-v1.md` 仍为 v1.1，本轮未修改最高 4 星、伤害、移动、波次、能量、召唤、格位、英雄池、随机或资源加载模型。
+Selected 现在使用最外层青白外框和右上菱形标记，Hover 只保留弱内框；站立横线统一降低到距格位底边 8px。11/6/7px 棋盘间距、稳定 instanceId 选择、78～80px 英雄尺寸、运行纹理和全部玩法规则保持不变。`system-models-v1.md` 仍为 v1.1。
 
 ## 本轮已完成
+
+### 阶段 2.5C.2c 实例级选中视觉强化与站立横线修复
+
+- 审计确认原 Hover 为 3px/0.96 青色边框，强度高于 2px/1.0 的 Selected 外框；原 SelectedMarker 为顶部中央 12×3px 短线。两者虽可组合，但 Hover 容易抢夺实例选择焦点。
+- 状态层显式调整为 ProfessionOrStarFrame → 1px/0.40 内缩 HoverVisual → 2px/1.0 SelectedOuterFrame → 右上 6×6 菱形 SelectedMarker → FutureMergeVisual。Selected 不依赖动画，不修改 HeroMain/HeroEcho 的 Alpha、Scale 或位置。
+- selected+hovered 保留完整 Selected 外框/标记并叠加弱内框；selected+maximumStar 同时保留金色满星身份和青白实例焦点；locked、disabled 与未来 merge/drag 主状态继续抑制实例 Selected。
+- 实例选择仍由稳定 instanceId 驱动；只增加 hovered slot 的只读调试回调，没有修改选择、取消、失效清理、信息条或重开语义。
+- 原 `SlotForegroundLip` 为按英雄 slotOffsetY=35～39 绘制的 58×5px Graphics，填充 Alpha 0.82，距格位底边 10.5～14.5px。现改为统一局部 `y=43`、58×2px、Alpha 0.55、距底边8px，平均下移约6.75px。
+- 横线只在占用格显示；空格和锁定格保持隐藏。它不再读取 heroId 或星级位置，不移动 HeroMain、HeroEcho、脚底圆环、棋盘行或 HitArea；与分身/圆环最多保持 2px 轻量前景交叠。
+- `?uiDebug=1` 新增每格 instanceId、selected/hovered 格位、组合状态、Hover/Selected/Lip 边界、Lip底部距离和圆环交叠摘要，以及实例不一致、越界和Lip遮挡警告。
+- 本阶段没有拖拽、合成、地图、道路、正式关卡或 2D.2 实现；没有修改 PNG、Manifest、英雄尺寸、footAnchor、slotOffset、战斗或随机。
+- 工程验证：TypeScript 通过；32 个测试文件、226 项测试全部通过；Vite 8.1.4 转换 91 个模块，主包约 1,540.71 kB、gzip 405.76 kB。HTTP 冒烟首页、入口和四张运行纹理均为 200，日志无 404。
+
+### 阶段 2.5C.2-spacing 英雄棋盘垂直间距再平衡
+
+- 审计确认原布局信息条为局部 `(336,8,576,28)`，上排边框 `y=52～128`、下排边框 `y=129～205`、中央栏底边 `y=212`，三段间距为 16/1/7px。
+- 新增统一 `firstRowVerticalAdjustment=-5`，上排中心从 `y=76` 调整为 `y=71`，下排继续使用 `y=153`；最终边框间距为 11/6/7px，末端 4px 安全区保持不变。
+- 上排五个格位的底板、HeroEcho/HeroMain、前唇、状态层、锁层和 80×76 HitArea 随容器整体移动；横坐标、索引和解锁顺序未改变。
+- 自动化安全计算结合 256px 运行纹理至少 15px 透明边距：当前 1 星可见主体距信息条最小约 5.2px，4 星 84px 可见主体最小约 1.8px，2/3 星分身、满星光圈、SelectedOutline 和 SelectedMarker 均不与信息条相交。
+- `BottomCommandLayout` 显式提供信息条到上排、两排之间和下排到底边的间距矩形；`?uiDebug=1` 绘制三段区域并显示 `GAPS 11/6/7`，保留信息条、HitArea、HeroMain、状态边界和底部安全警告。
+- 未修改英雄 PNG、运行纹理、Manifest、显示尺寸、footAnchor、slotOffset、实例选择、状态优先级、战斗、地图或道路；拖拽、合成和正式关卡仍未实现。
+- 工程验证：TypeScript 通过；32 个测试文件、222 项测试全部通过；Vite 8.1.4 转换 91 个模块，主包约 1,537.28 kB、gzip 404.90 kB。HTTP 冒烟首页、入口和四张运行纹理均为 200，日志无 404。
+
+### 阶段 2.5C.2b 英雄棋盘安全间距与实例级选中强化
+
+- `BottomCommandLayout` 保持上排局部中心 `y=76` 和信息条 `576×28` 不变；下排通过统一 `secondRowVerticalAdjustment=-5` 从 `y=158` 调整为 `y=153`，横坐标、索引、解锁顺序和 80×76 HitArea 不变。
+- 中央栏底边统一到局部 `y=212`；下排底板止于 `y=205`，青白选中外框止于 `y=205`，脚底与 4 星光圈通过统一视觉偏移止于安全线 `y=208` 之前，不修改英雄图片、显示尺寸、footAnchor 或 slotOffset。
+- 新增 `HeroInstanceSelection`，只保存稳定英雄 instanceId。点击同一实例可取消，点击同 heroId 的另一实例会转移选择；实例移除、重开、场景 shutdown/destroy 时清空，不使用 heroId 首个匹配或格位数组位置推断。
+- `HeroSlotView` 在状态层新增统一青白 2px 外框和顶部 12×3px 短标记；外框不透明填充为 0，不修改英雄透明度、缩放、HitArea 或 HeroEcho。
+- 状态组合集中为纯函数：locked/disabled 优先，其次是未来 dragging/merge 状态；selected 使用独立外框，可与 hovered 或 maximumStar 同时表达。当前仍没有拖拽、`MergeIntent`、`MergeSystem` 或 `mergeRng` 消费。
+- 未增加呼吸 Tween，选中反馈为静态节点；取消、切换和重开只更新节点可见性，因此没有新的循环动画清理风险。
+- `?uiDebug=1` 增加下排 4px 安全区、脚底/满星光圈、选中外框、顶部标记、当前实例 ID/格位和底部/信息条交叠警告。
+- 工程验证：TypeScript 通过；32 个测试文件、219 项测试全部通过；生产构建与 HTTP 冒烟结果见本轮最终报告。未修改 PNG、运行纹理、Manifest、战斗、伤害、召唤、格位规则、星级或随机。
+
+### 阶段 2.5C.2a 英雄格位层级与遮挡修复
+
+- 根因是显示树与布局组合：底板填充和状态边框原先由同一 Graphics 维护，后置状态覆盖层可以覆盖英雄；`SelectedHeroInfoBar` 又位于下排格位底部区域。没有发现纹理裁切需求，英雄尺寸无需缩小。
+- `HeroSlotView` 改为固定子容器顺序：SlotBackplate → HeroVisual（Echo → Main）→ 5px SlotForegroundLip → SlotStateOverlay → LockOverlay → 80×76 InteractionHitArea。内部不使用 HeroMain 矩形 mask，也不依赖子节点 `setDepth`。
+- 占用格底板透明度降低到 0.58；边框、悬停、选中和满星位于英雄上方但不再给正常/悬停/选中/满星叠加整块填色。薄前唇只覆盖配置脚底基线约 5px。
+- 锁定格保留完整灰蓝遮罩、锁和解锁条件；空格保留星核纹路；锁定遮罩在开放/占用格完全隐藏。
+- `HeroBattleView` 明确拆分 HeroEchoLayer 和 HeroMainLayer；2/3 星分身在主英雄之后，4 星光环在主英雄之后，Buff/禁用表现仍位于主视觉内部且不改变玩法。
+- 中央指挥台高度由 204 调整为 212px并落在 720px 画布底边；信息条位于中央栏 `y=8`、高度 28px，上排格位中心 `y=76`、下排中心 `y=158`，信息条与两排 80×76 格位均不相交。
+- 四名英雄显示尺寸保持 80/78/78/78px；footAnchor 不变，slotOffsetY 分别微调为 39/36/35/35，使最大 4 星画布相对格位顶边保持约 12～16px 受控上溢且不侵入相邻格核心区。
+- `?uiDebug=1` 增加底板、HeroEcho、HeroMain、前唇、HitArea、信息条和相邻格核心区重叠诊断。
+- 工程验证：TypeScript 通过；32 个测试文件、210 项测试全部通过；Vite 生产构建成功。未修改 PNG、运行纹理、战斗、伤害、召唤、格位规则、星级或随机。
+
+### 阶段 2.5C.2 英雄可读性、格位简化与统一信息抽屉
+
+- 新增 `tools/generate_hero_runtime_assets.py` 与 `verify_hero_runtime_assets.py`：按 Alpha 主体边界保留 6%～8% 安全边距，以预乘 Alpha Lanczos 缩放和轻量 UnsharpMask 生成 256×256 RGBA 运行纹理；报告记录母版/输出 SHA-256、边界、比例和四角 Alpha。母版哈希在重复生成前后保持不变。
+- 五名英雄均生成运行纹理；Manifest 只启用疾风猎手、余烬法师、岩盾先锋、星辉祭司四张 `runtime/battle-1star.png`，森灵唤师运行纹理不登记、不请求、不进入英雄池。
+- 正式纹理由任意小数源图 scale 改为 78～80px 整数目标显示尺寸，统一上限 84px；每名英雄的脚底 anchor 和整数 slot offset 仍在视觉定义中微调。程序 fallback 尺寸保持不变。
+- 新增纯表现 `HeroStarPresentationModel`：1 星一个主视觉；2 星增加一个 50%～55% 分身；3 星增加两个 45%～50% 分身；4 星只保留放大主视觉和满星光环。分身没有实例 ID、输入、攻击、伤害或统计职责。
+- `HeroSlotView` 默认不再常驻显示完整英雄名与完整星级文字；新建 `SelectedHeroInfoBar` 显示选中英雄名称、精确星级、职业、有效基础攻击和暴击率。格位 HitArea 始终使用 80×76 逻辑矩形，不读取 PNG 透明像素。
+- 建立 `BattleRightDrawer`：默认收起；正式标签为“怪物情报”和“伤害统计”，开发环境或 `?combatDebug=1`/`?uiDebug=1` 时增加“模拟调试”。抽屉以 236×384 覆盖战场右侧，不修改战场、道路或 LanePathGeometry。
+- `EnemyIntelProvider` 从真实关卡波次、`EnemyDefinition` 和运行时快照生成波次概览及选中怪物 HP、护甲、抗性、推进时间；点击怪物只设置稳定实例 ID 的显示选择环，不修改根节点、移动或索敌。2D.4 能力尚未接入时不伪造说明。
+- `BattleStatisticsTracker` 按稳定来源实例累计 `appliedDamage`、普攻、技能预留、暴击伤害/次数、命中、AoE/DoT/召唤预留和模拟时间 DPS，再按 heroId 汇总。排空表现事件不再误清空统计；重置才清空，重复 requestId 不重复累计。
+- 预留 `HeroSlotInteractionState` 的 normal/hovered/selected/dragging/mergeEligible/mergeHovered/mergeInvalid/maximumStar/locked/disabled 统一样式与覆盖层；正常战斗没有注册 drag 流程、没有 `MergeIntent`、没有移动英雄、没有消费 `mergeRng`。
+- `?uiDebug=1` 继续一次性绘制三栏、格位 HitArea、英雄视觉范围、选中信息条、右侧抽屉和重叠警告；默认关闭，不参与战斗或输入判定。
+- 工程验证：TypeScript 通过；32 个测试文件、206 项测试全部通过；Vite 生产构建成功。真实 Canvas 清晰度、遮挡、抽屉覆盖和高 DPI 表现仍需人工验收。
 
 ### 阶段 2.5C 战斗 UI 标准化与底部指挥台布局重构
 
 - 新增 `BottomCommandLayout`，在 1248×204 指挥台中生成 296px 左栏、592px 中栏、296px 右栏及两个 16px 栏间距；全部主要矩形由 `uiMetrics.ts` 的尺寸令牌计算。
 - 左栏统一承载战斗能量、召唤费用、技能状态和技能预览；中央只承载两排五格及格内扩格提示；右栏依次承载英雄编制/扩格进度、296×52 主召唤按钮、合成/重构次按钮。
 - 统一 4/8/12/16/24px 间距、40px 常规按钮、52px 主按钮和 44px 状态卡；`GameButton` 继续作为动作按钮实现并新增 tertiary 语义，所有变体共享低权重禁用样式。
-- `HeroSlotView` 的背景顶边、纹路、名称、星级和文字安全区坐标迁入 `uiMetrics.ts`；正式纹理仍以 72px 为上限，四名英雄 scale/anchor/offset 与程序 fallback 尺寸保持不变。
+- `HeroSlotView` 的背景顶边、纹路、名称、星级和文字安全区坐标迁入 `uiMetrics.ts`；该阶段使用 72px 上限，已由阶段 2.5C.2 的 256px 运行纹理和 78～84px 显示模型取代。
 - 新增默认关闭的 `?uiDebug=1` 开发覆盖层，一次绘制三栏、组件边界、行基线、格位、英雄视觉范围和文字安全区，不逐帧创建对象。
 - 保留关卡中的十格世界坐标，因此弹道起点、目标选择、攻击时序与战斗规则未改变；技能、合成和重构仍只是现有占位入口。
 
@@ -290,10 +349,11 @@
 | `PathGeometry` / `LanePathGeometry` | 连续顶点法线、宽走廊插值、通道收束和敌人世界坐标 |
 | `LaneSpawnPlanner` | 六种通道队形、权重、稳定轮转和 Boss/小怪分配 |
 | `LevelDefinition` / `levelDefinitions` | 宽走廊、3～7 通道、波次队形和居中十格坐标 |
-| `PrototypeScene` / `BattlefieldView` | 上下区域排版、锁定格、插值敌人/弹道显示、后台时钟重同步和开发诊断 |
+| `PrototypeScene` / `BattlefieldView` | 上下区域排版、稳定 ID 怪物选择、插值敌人/弹道显示、后台时钟重同步和开发诊断 |
 | `ui/theme` | 颜色、字号、间距、布局、层级和动画设计令牌 |
-| `ui/components` | 面板、按钮、资源、格位、生命条和有界提示组件 |
-| `ui/state` | 快照派生状态、禁用按钮保护、提示队列和清理生命周期 |
+| `ui/components` | 面板、按钮、资源、格位、选中信息条、右侧抽屉、生命条和有界提示组件 |
+| `ui/state` | 快照派生状态、格位交互预留、抽屉状态、禁用按钮保护、提示队列和清理生命周期 |
+| `battle/statistics` / `ui/viewmodels` | 实例/英雄伤害统计、怪物情报和选中英雄只读转换 |
 | `StableViewRegistry` / `EnemyViewTransform` | 稳定实例视图绑定、唯一运动写入口和受击视觉隔离 |
 
 ## 验证记录
@@ -301,8 +361,18 @@
 | 验收项 | 状态 | 说明 |
 | --- | --- | --- |
 | `npm run typecheck` | 通过 | TypeScript 严格类型检查无错误 |
-| `npm test` | 通过 | 29 个测试文件、187 个测试全部通过 |
-| `npm run build` | 通过 | Vite 8.1.4 转换 80 个模块；主包约 1,505.73 kB、gzip 396.00 kB，只有现有的大包体积非阻断提示 |
+| `npm test` | 通过 | 32 个测试文件、226 个测试全部通过 |
+| `npm run build` | 通过 | Vite 8.1.4 转换 91 个模块；主包约 1,540.71 kB、gzip 405.76 kB，只有现有的大包体积非阻断提示 |
+| 阶段 2.5C.2c 选中与站立横线 | 通过 | 独立 Hover/Selected 组合、稳定实例映射、状态层顺序、统一 Lip 几何、脚底圆环交叠上限和 11/6/7px 棋盘回归均有纯逻辑覆盖 |
+| 阶段 2.5C.2c HTTP 冒烟 | 通过 | Vite 在 `127.0.0.1:5183` 启动；首页、入口和四张运行纹理均返回 200，日志无 404；Manifest 未改变 |
+| 阶段 2.5C.2-spacing 垂直间距 | 通过 | 信息条矩形不变、上排统一偏移、11/6/7px 三段间距、1～4 星主体/分身/光圈安全、HitArea 同步和状态/实例选择回归均有纯逻辑覆盖 |
+| 阶段 2.5C.2-spacing HTTP 冒烟 | 通过 | Vite 在 `127.0.0.1:5182` 启动；首页、入口和四张运行纹理均返回 200，日志无 404；Manifest 未改变 |
+| 阶段 2.5C.2b 安全间距与实例选择 | 通过 | 下排统一偏移、4px 安全区、主图/脚底/满星/选中边界、稳定 instanceId 切换/取消/移除/重置、状态组合和信息条实例同步均有纯逻辑覆盖 |
+| 阶段 2.5C.2b HTTP 冒烟 | 通过 | Vite 在 `127.0.0.1:5181` 启动；首页、入口和四张运行纹理均返回 200，日志无 404；母版、森灵唤师和 3/4 星资源未进入 Manifest |
+| 阶段 2.5C.2a 格位层级 | 通过 | 显示树顺序、无矩形裁切、5px 前唇、锁遮罩边界、78～80px 尺寸、12～20px 上溢、信息条/格位无交叠及高星分身顺序均有纯逻辑覆盖 |
+| 阶段 2.5C.2 运行纹理 | 通过 | 五张输出均为 256×256 RGBA、四角透明、安全边距不少于 15px；重复生成 SHA 稳定，母版 SHA 不变 |
+| 阶段 2.5C.2 信息模型 | 通过 | 星级纯表现、格位 HitArea/预留状态、抽屉状态、真实怪物情报、实例/英雄伤害统计和重置均有纯逻辑覆盖 |
+| 阶段 2.5C.2 HTTP 冒烟 | 通过 | Vite 在 `127.0.0.1:5179` 启动；首页、入口模块和四张启用运行纹理均返回 HTTP 200；Manifest 不包含母版或森灵唤师 |
 | 阶段 2.5C 布局约束 | 通过 | 三栏边界、行基线、十格、英雄视觉安全区、统一禁用样式、fallback 和 uiDebug 默认状态均有纯逻辑测试 |
 | 阶段 2.5C HTTP 冒烟 | 通过 | Vite 在 `127.0.0.1:5178` 启动；首页、入口、布局模块、`?uiDebug=1` 与英雄 PNG 均返回 HTTP 200 |
 | 阶段 2.5A 单英雄冒烟 | 通过 | 只启用疾风猎手时 typecheck 与 4 个专项测试文件、25 项测试通过；其余英雄保持程序 fallback |

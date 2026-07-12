@@ -137,10 +137,13 @@ export interface EnemySnapshot extends PointDefinition {
   readonly definitionId: string;
   readonly name: string;
   readonly kind: EnemyKind;
+  readonly waveId: string;
   readonly color: number;
   readonly radius: number;
   readonly health: number;
   readonly maxHealth: number;
+  readonly armor: number;
+  readonly resistance: number;
   readonly traversalTimeSeconds: number;
   readonly estimatedRemainingSeconds: number;
   /** 以下 previous/render 字段只供显示插值，不是玩法权威状态。 */
@@ -153,6 +156,13 @@ export interface EnemySnapshot extends PointDefinition {
   readonly pathProgress: number;
   readonly laneIndex: number;
   readonly laneOffset: number;
+}
+
+export interface WaveRuntimeSnapshot {
+  readonly waveId: string;
+  readonly remainingToSpawn: number;
+  readonly activeEnemies: number;
+  readonly completed: boolean;
 }
 
 export interface WavePreviewSnapshot {
@@ -223,6 +233,7 @@ export interface BattleSnapshot {
   readonly heroes: readonly HeroSnapshot[];
   readonly enemies: readonly EnemySnapshot[];
   readonly projectiles: readonly ProjectileSnapshot[];
+  readonly waves: readonly WaveRuntimeSnapshot[];
 }
 
 export const MAX_SIMULATION_STEPS_PER_FRAME = 5;
@@ -641,10 +652,13 @@ export class BattleSimulation {
           definitionId: enemy.definition.id,
           name: enemy.definition.name,
           kind: enemy.definition.kind,
+          waveId: enemy.waveId,
           color: enemy.definition.color,
           radius: enemy.definition.radius,
           health: enemy.health,
           maxHealth: enemy.definition.maxHealth,
+          armor: enemy.combatStats.armor,
+          resistance: enemy.combatStats.resistance,
           traversalTimeSeconds: enemy.definition.traversalTimeSeconds,
           estimatedRemainingSeconds:
             (1 - position.pathProgress) *
@@ -682,6 +696,16 @@ export class BattleSimulation {
         x: projectile.x,
         y: projectile.y,
       })),
+      waves: this.level.waves.map((wave) => {
+        const state = this.waveStates.get(wave.id);
+        if (state === undefined) throw new Error(`缺少波次运行状态：${wave.id}`);
+        return {
+          waveId: wave.id,
+          remainingToSpawn: state.remainingToSpawn,
+          activeEnemies: state.activeEnemies,
+          completed: state.completed,
+        };
+      }),
     };
   }
 

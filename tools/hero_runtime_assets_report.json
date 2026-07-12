@@ -1,0 +1,247 @@
+{
+  "assets": [
+    {
+      "alphaBounds": [
+        207,
+        169,
+        1059,
+        1069
+      ],
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "heroDirectory": "wind-hunter",
+      "masterPath": "public/assets/heroes/wind-hunter/battle-1star.png",
+      "masterSha256": "265b55e77926839d079e43aa0131e098d30e2e2b336d428ecdc869d68dd8a2f5",
+      "originalMode": "RGBA",
+      "originalSize": [
+        1254,
+        1254
+      ],
+      "resizedSubjectSize": [
+        208,
+        220
+      ],
+      "runtimeAlphaBounds": [
+        24,
+        18,
+        232,
+        238
+      ],
+      "runtimeMode": "RGBA",
+      "runtimePath": "public/assets/heroes/wind-hunter/runtime/battle-1star.png",
+      "runtimeSha256": "ec55c07aeca0d35bb8e767e58cc20ed384d925922825126e716a8353a4521721",
+      "runtimeSize": [
+        256,
+        256
+      ],
+      "safetyMargins": {
+        "bottom": 18,
+        "left": 24,
+        "right": 24,
+        "top": 18
+      },
+      "scale": 0.24444444444444444
+    },
+    {
+      "alphaBounds": [
+        134,
+        176,
+        1114,
+        1092
+      ],
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "heroDirectory": "ember-mage",
+      "masterPath": "public/assets/heroes/ember-mage/battle-1star.png",
+      "masterSha256": "5c9a58101053785180f3bcf4d8174845610019dbce046c0c6ee3e536e42e1132",
+      "originalMode": "RGBA",
+      "originalSize": [
+        1254,
+        1254
+      ],
+      "resizedSubjectSize": [
+        220,
+        206
+      ],
+      "runtimeAlphaBounds": [
+        18,
+        25,
+        238,
+        231
+      ],
+      "runtimeMode": "RGBA",
+      "runtimePath": "public/assets/heroes/ember-mage/runtime/battle-1star.png",
+      "runtimeSha256": "3f7f2efc8daa30d474b4d452a4abdb6b528650fc8ae83e5cc61ae7f0231526e6",
+      "runtimeSize": [
+        256,
+        256
+      ],
+      "safetyMargins": {
+        "bottom": 25,
+        "left": 18,
+        "right": 18,
+        "top": 25
+      },
+      "scale": 0.22448979591836735
+    },
+    {
+      "alphaBounds": [
+        134,
+        194,
+        1103,
+        1066
+      ],
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "heroDirectory": "stone-vanguard",
+      "masterPath": "public/assets/heroes/stone-vanguard/battle-1star.png",
+      "masterSha256": "94aba5ba4ad4da00c2be601f2093343e22a813f9f2a2281612d09e038d5caa4d",
+      "originalMode": "RGBA",
+      "originalSize": [
+        1254,
+        1254
+      ],
+      "resizedSubjectSize": [
+        220,
+        198
+      ],
+      "runtimeAlphaBounds": [
+        18,
+        29,
+        238,
+        227
+      ],
+      "runtimeMode": "RGBA",
+      "runtimePath": "public/assets/heroes/stone-vanguard/runtime/battle-1star.png",
+      "runtimeSha256": "98dc8ef1748df2eb259a6ff905adc2e16943e2901043eeecd8e2384065ad559d",
+      "runtimeSize": [
+        256,
+        256
+      ],
+      "safetyMargins": {
+        "bottom": 29,
+        "left": 18,
+        "right": 18,
+        "top": 29
+      },
+      "scale": 0.22703818369453044
+    },
+    {
+      "alphaBounds": [
+        118,
+        160,
+        1068,
+        1084
+      ],
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "heroDirectory": "forest-summoner",
+      "masterPath": "public/assets/heroes/forest-summoner/battle-1star.png",
+      "masterSha256": "233578a260618779472d1d194434850145238be33694895fb6e952210d6085e0",
+      "originalMode": "RGBA",
+      "originalSize": [
+        1254,
+        1254
+      ],
+      "resizedSubjectSize": [
+        220,
+        214
+      ],
+      "runtimeAlphaBounds": [
+        18,
+        21,
+        238,
+        235
+      ],
+      "runtimeMode": "RGBA",
+      "runtimePath": "public/assets/heroes/forest-summoner/runtime/battle-1star.png",
+      "runtimeSha256": "4ece194ac1051118f523acce28623f366d379c416bfda8c3980c98b066b622e1",
+      "runtimeSize": [
+        256,
+        256
+      ],
+      "safetyMargins": {
+        "bottom": 21,
+        "left": 18,
+        "right": 18,
+        "top": 21
+      },
+      "scale": 0.23157894736842105
+    },
+    {
+      "alphaBounds": [
+        112,
+        165,
+        1131,
+        1093
+      ],
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "heroDirectory": "starlight-priest",
+      "masterPath": "public/assets/heroes/starlight-priest/battle-1star.png",
+      "masterSha256": "80ac01d4b0653d6e3ddd1aaa8c493f092d3572362e1294c723d0d944de228105",
+      "originalMode": "RGBA",
+      "originalSize": [
+        1254,
+        1254
+      ],
+      "resizedSubjectSize": [
+        220,
+        200
+      ],
+      "runtimeAlphaBounds": [
+        18,
+        28,
+        238,
+        228
+      ],
+      "runtimeMode": "RGBA",
+      "runtimePath": "public/assets/heroes/starlight-priest/runtime/battle-1star.png",
+      "runtimeSha256": "2b1f99b8a038f3655e217769c3ffda1de8b9c552af132ab451b74ab0254bfad5",
+      "runtimeSize": [
+        256,
+        256
+      ],
+      "safetyMargins": {
+        "bottom": 28,
+        "left": 18,
+        "right": 18,
+        "top": 28
+      },
+      "scale": 0.21589793915603533
+    }
+  ],
+  "generatorVersion": 1,
+  "outputSize": [
+    256,
+    256
+  ],
+  "pillowVersion": "12.3.0",
+  "resampling": "Lanczos",
+  "safeMarginRatio": 0.07,
+  "unsharpMask": {
+    "percent": 30,
+    "radius": 0.55,
+    "threshold": 3
+  }
+}

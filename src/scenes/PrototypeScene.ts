@@ -24,9 +24,11 @@ import {
   type BattlePresentationEvent,
 } from '../presentation/BattlePresentationEventBridge';
 import { BattleNotice } from '../ui/components/BattleNotice';
+import { BattleRightDrawer } from '../ui/components/BattleRightDrawer';
 import { GameButton } from '../ui/components/GameButton';
 import { HealthBar } from '../ui/components/HealthBar';
 import { HeroSlotView } from '../ui/components/HeroSlotView';
+import { SelectedHeroInfoBar } from '../ui/components/SelectedHeroInfoBar';
 import { Panel } from '../ui/components/Panel';
 import { ResourceDisplay } from '../ui/components/ResourceDisplay';
 import { SectionLabel } from '../ui/components/SectionLabel';
@@ -41,16 +43,18 @@ import {
   type UiRect,
 } from '../ui/layout/BottomCommandLayout';
 import { deriveBattleUiState } from '../ui/state/BattleUiState';
+import { HeroInstanceSelection } from '../ui/state/HeroInstanceSelection';
+import { createDamageStatisticsViewModel } from '../ui/viewmodels/DamageStatisticsViewModel';
+import { createEnemyIntel } from '../ui/viewmodels/EnemyIntelProvider';
+import { createSelectedHeroInfo } from '../ui/viewmodels/SelectedHeroInfo';
 import { UI_METRICS } from '../ui/theme/uiMetrics';
 import {
   UI_COLORS,
-  UI_CSS_COLORS,
   toCssColor,
 } from '../ui/theme/uiTheme';
 import {
   UI_FONT_FAMILY,
   UI_FONT_SIZES,
-  UI_MONO_FONT_FAMILY,
 } from '../ui/theme/uiTypography';
 
 const DEBUG_REFRESH_MS = 200;
@@ -84,6 +88,8 @@ export class PrototypeScene extends Phaser.Scene {
   private speedTwoButton!: GameButton;
   private skillButton!: GameButton;
   private debugToggleButton?: GameButton;
+  private rightDrawer!: BattleRightDrawer;
+  private selectedHeroInfoBar!: SelectedHeroInfoBar;
   private uiDebugOverlay: UiDebugOverlay | undefined;
   private bottomCommandLayout!: BottomCommandLayout;
   private readonly heroSlots: HeroSlotView[] = [];
@@ -95,9 +101,11 @@ export class PrototypeScene extends Phaser.Scene {
   private timeText!: Phaser.GameObjects.Text;
   private enemyText!: Phaser.GameObjects.Text;
   private summonHintText!: Phaser.GameObjects.Text;
-  private debugText?: Phaser.GameObjects.Text;
-  private debugVisible = import.meta.env.DEV;
   private debugElapsedMs = 0;
+  private debugLines: readonly string[] = [];
+  private readonly heroSelection = new HeroInstanceSelection();
+  private hoveredHeroSlotIndex: number | null = null;
+  private selectedEnemyInstanceId: string | null = null;
   private previousWaveIndex = -1;
   private previousPreviewWaveId: string | null = null;
   private previousBossVisible = false;
@@ -146,9 +154,14 @@ export class PrototypeScene extends Phaser.Scene {
     );
     this.startThemeAudio();
     this.battlefieldView = new BattlefieldView(this, PROTOTYPE_LEVEL);
+    this.battlefieldView.setEnemySelectionHandler((enemyInstanceId) => {
+      this.selectedEnemyInstanceId = enemyInstanceId;
+      this.refreshInformationPanels(this.battle.getSnapshot());
+    });
     this.createTopBar();
     this.createCommandDeck();
     this.notice = new BattleNotice(this, 640, 142);
+    this.createRightDrawer();
     this.createDebugPanel();
 
     const snapshot = this.battle.getSnapshot();
@@ -169,12 +182,11 @@ export class PrototypeScene extends Phaser.Scene {
     this.battlefieldView.handlePresentationEvents(presentationEvents);
     this.battlefieldView.update(snapshot);
     this.refreshUi(snapshot);
-    if (this.debugVisible && this.debugText !== undefined) {
-      this.debugElapsedMs += delta;
-      if (this.debugElapsedMs >= DEBUG_REFRESH_MS) {
-        this.debugElapsedMs = 0;
-        this.updateDebugPanel(snapshot);
-      }
+    this.debugElapsedMs += delta;
+    if (this.debugElapsedMs >= DEBUG_REFRESH_MS) {
+      this.debugElapsedMs = 0;
+      this.debugLines = this.createDebugLines(snapshot);
+      this.refreshInformationPanels(snapshot);
     }
   }
 
@@ -254,8 +266,8 @@ export class PrototypeScene extends Phaser.Scene {
     this.speedTwoButton = this.addTopButton(928, '2×', 58, () => {
       this.setBattleSpeed(2);
     });
-    if (import.meta.env.DEV) {
-      this.debugToggleButton = this.addTopButton(1_020, '收起调试', 110, () => {
+    if (this.isDrawerDebugEnabled()) {
+      this.debugToggleButton = this.addTopButton(1_020, '模拟调试', 110, () => {
         this.toggleDebugPanel();
       }, 'ghost');
     }
@@ -324,12 +336,6 @@ export class PrototypeScene extends Phaser.Scene {
       ),
       new SectionLabel(
         this,
-        layout.sectionLabels.center.x,
-        layout.sectionLabels.center.y,
-        '英雄编队',
-      ),
-      new SectionLabel(
-        this,
         layout.sectionLabels.right.x,
         layout.sectionLabels.right.y,
         '主要操作',
@@ -345,10 +351,35 @@ export class PrototypeScene extends Phaser.Scene {
         index,
         position.x,
         position.y,
+        undefined,
+        undefined,
+        {
+          onSelect: (heroInstanceId) => {
+            this.heroSelection.toggle(heroInstanceId);
+            this.refreshUi(this.battle.getSnapshot());
+          },
+          onHoverChanged: (slotIndex, hovered) => {
+            this.hoveredHeroSlotIndex = hovered
+              ? slotIndex
+              : this.hoveredHeroSlotIndex === slotIndex
+                ? null
+                : this.hoveredHeroSlotIndex;
+            this.refreshHeroInteractionDebug(this.battle.getSnapshot());
+          },
+        },
       );
       this.commandPanel.content.add(slotView.container);
       this.heroSlots.push(slotView);
     }
+    const selectedInfoBounds = layout.heroBoard.selectedInfoBar;
+    this.selectedHeroInfoBar = new SelectedHeroInfoBar(
+      this,
+      selectedInfoBounds.x,
+      selectedInfoBounds.y,
+      selectedInfoBounds.width,
+      selectedInfoBounds.height,
+    );
+    this.commandPanel.content.add(this.selectedHeroInfoBar.container);
 
     const energyCenter = centerOf(layout.left.energy);
     this.energyDisplay = new ResourceDisplay(this, energyCenter.x, energyCenter.y, {
@@ -467,24 +498,17 @@ export class PrototypeScene extends Phaser.Scene {
   }
 
   private createDebugPanel(): void {
-    if (!import.meta.env.DEV) {
-      this.debugVisible = false;
-      return;
-    }
     if (isUiDebugEnabled(window.location.search, import.meta.env.DEV)) {
       this.uiDebugOverlay = new UiDebugOverlay(this, this.bottomCommandLayout);
     }
-    this.debugText = this.add
-      .text(1_038, 88, '', {
-        backgroundColor: UI_CSS_COLORS.debugBackground,
-        color: toCssColor(UI_COLORS.textSecondary),
-        fontFamily: UI_MONO_FONT_FAMILY,
-        fontSize: `${UI_FONT_SIZES.caption}px`,
-        lineSpacing: 3,
-        padding: { x: 9, y: 7 },
-      })
-      .setDepth(UI_METRICS.depth.debug)
-      .setVisible(this.debugVisible);
+  }
+
+  private createRightDrawer(): void {
+    this.rightDrawer = new BattleRightDrawer(
+      this,
+      this.isDrawerDebugEnabled(),
+      (tab) => this.debugToggleButton?.setSelected(tab === 'simulation-debug'),
+    );
   }
 
   private handlePrimaryBattleAction(): void {
@@ -572,6 +596,11 @@ export class PrototypeScene extends Phaser.Scene {
   private resetBattlePresentation(): void {
     this.notice.clear();
     this.battlefieldView.resetFeedback();
+    this.battlefieldView.setSelectedEnemyId(null);
+    this.heroSelection.clear();
+    this.hoveredHeroSlotIndex = null;
+    this.selectedEnemyInstanceId = null;
+    this.rightDrawer.reset();
     this.previousWaveIndex = -1;
     this.previousPreviewWaveId = null;
     this.previousBossVisible = false;
@@ -618,6 +647,7 @@ export class PrototypeScene extends Phaser.Scene {
     );
     this.progressDisplay.setValue(uiState.summonProgress, false);
 
+    this.heroSelection.reconcile(snapshot.heroes.map((hero) => hero.id));
     const remaining =
       snapshot.nextSlotUnlockAt === null
         ? null
@@ -634,7 +664,20 @@ export class PrototypeScene extends Phaser.Scene {
         summonsUntilUnlock: remaining,
         animate: !force,
       });
+      view.setSelected(this.heroSelection.isSelected(slot.occupant?.instanceId));
     }
+    if (
+      this.selectedEnemyInstanceId !== null &&
+      !snapshot.enemies.some((enemy) => enemy.id === this.selectedEnemyInstanceId)
+    ) {
+      this.selectedEnemyInstanceId = null;
+      this.battlefieldView.setSelectedEnemyId(null);
+    }
+    this.refreshInformationPanels(snapshot);
+    const selectedSlotIndex = snapshot.slots.find(
+      (slot) => this.heroSelection.isSelected(slot.occupant?.instanceId),
+    )?.index ?? null;
+    this.refreshHeroInteractionDebug(snapshot, selectedSlotIndex);
 
     this.summonButton.setEnabled(uiState.summonEnabled);
     this.summonButton.setSelected(uiState.expansionReady);
@@ -958,18 +1001,15 @@ export class PrototypeScene extends Phaser.Scene {
   }
 
   private toggleDebugPanel(): void {
-    this.debugVisible = !this.debugVisible;
-    this.debugText?.setVisible(this.debugVisible);
-    this.debugToggleButton?.setLabel(this.debugVisible ? '收起调试' : '打开调试');
-    if (this.debugVisible) this.updateDebugPanel(this.battle.getSnapshot());
+    this.rightDrawer.toggle('simulation-debug');
   }
 
-  private updateDebugPanel(snapshot: BattleSessionSnapshot): void {
+  private createDebugLines(snapshot: BattleSessionSnapshot): readonly string[] {
     const stats = snapshot.timingStats;
     const frame = snapshot.frameDiagnostics;
     const formatOptionalSeconds = (milliseconds: number | null): string =>
       milliseconds === null ? '--' : `${(milliseconds / 1_000).toFixed(2)}s`;
-    this.debugText?.setText([
+    return Object.freeze([
       `DEV · FPS ${Math.round(this.game.loop.actualFps)}`,
       `FRAME   ${frame.lastFrameDeltaMs.toFixed(2)}ms / PEAK ${frame.peakFrameDeltaMs.toFixed(1)}`,
       `STEP    ${frame.simulationStepsLastFrame}/${frame.maxSimulationStepsPerFrame}`,
@@ -995,6 +1035,51 @@ export class PrototypeScene extends Phaser.Scene {
     ]);
   }
 
+  private refreshInformationPanels(snapshot: BattleSessionSnapshot): void {
+    this.selectedHeroInfoBar.update(
+      createSelectedHeroInfo(
+        this.heroSelection.current,
+        snapshot,
+        HERO_DEFINITIONS_BY_ID,
+      ),
+    );
+    this.rightDrawer.update(
+      createEnemyIntel(
+        snapshot,
+        PROTOTYPE_LEVEL,
+        ENEMY_DEFINITIONS_BY_ID,
+        this.selectedEnemyInstanceId,
+      ),
+      createDamageStatisticsViewModel(
+        snapshot.statistics,
+        HERO_DEFINITIONS_BY_ID,
+      ),
+      this.debugLines,
+    );
+  }
+
+  private refreshHeroInteractionDebug(
+    snapshot: BattleSessionSnapshot,
+    selectedSlotIndex: number | null = snapshot.slots.find(
+      (slot) => this.heroSelection.isSelected(slot.occupant?.instanceId),
+    )?.index ?? null,
+  ): void {
+    this.uiDebugOverlay?.updateHeroInteraction(
+      this.heroSelection.current,
+      selectedSlotIndex,
+      this.hoveredHeroSlotIndex,
+      snapshot.slots.map((slot) => slot.occupant?.instanceId ?? null),
+      snapshot.slots.map((slot) => slot.occupant?.starLevel ?? null),
+    );
+  }
+
+  private isDrawerDebugEnabled(): boolean {
+    const params = new URLSearchParams(window.location.search);
+    return import.meta.env.DEV ||
+      params.get('combatDebug') === '1' ||
+      params.get('uiDebug') === '1';
+  }
+
   private reportEnemyProgressRegressions(snapshot: BattleSessionSnapshot): void {
     for (const diagnostic of this.enemyProgressMonitor.observe(snapshot)) {
       console.error('[EnemyProgressRegression]', diagnostic);
@@ -1005,6 +1090,8 @@ export class PrototypeScene extends Phaser.Scene {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     window.removeEventListener('blur', this.handleWindowBlur);
     window.removeEventListener('focus', this.handleWindowFocus);
+    this.heroSelection.destroy();
+    this.hoveredHeroSlotIndex = null;
     this.destroyStateOverlay();
     for (const button of this.persistentButtons.splice(0)) button.destroy();
     for (const slot of this.heroSlots.splice(0)) slot.destroy();
@@ -1015,6 +1102,8 @@ export class PrototypeScene extends Phaser.Scene {
     this.progressDisplay?.destroy();
     this.formationDisplay?.destroy();
     this.notice?.destroy();
+    this.selectedHeroInfoBar?.destroy();
+    this.rightDrawer?.destroy();
     this.uiDebugOverlay?.destroy();
     this.battlefieldView?.destroy();
     this.audio?.destroy();
@@ -1033,6 +1122,10 @@ export class PrototypeScene extends Phaser.Scene {
     this.previousExpansionReady = false;
     this.renderedOverlayState = null;
     this.debugElapsedMs = 0;
+    this.debugLines = [];
+    this.heroSelection.clear();
+    this.hoveredHeroSlotIndex = null;
+    this.selectedEnemyInstanceId = null;
     this.visibilitySuspended = false;
     this.windowBlurred = false;
     this.uiDebugOverlay = undefined;

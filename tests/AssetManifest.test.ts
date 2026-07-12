@@ -39,22 +39,22 @@ describe('AssetManifest 与 AssetRegistry', () => {
     expect(registry.getEnabledEntries()).toEqual([
       expect.objectContaining({
         assetId: HERO_BATTLE_1_STAR_ASSET_IDS.galeHunter,
-        filePath: 'assets/heroes/wind-hunter/battle-1star.png',
+        filePath: 'assets/heroes/wind-hunter/runtime/battle-1star.png',
         phaserKey: 'hero:gale-hunter:battle:1star',
       }),
       expect.objectContaining({
         assetId: HERO_BATTLE_1_STAR_ASSET_IDS.emberMage,
-        filePath: 'assets/heroes/ember-mage/battle-1star.png',
+        filePath: 'assets/heroes/ember-mage/runtime/battle-1star.png',
         phaserKey: 'hero:ember-mage:battle:1star',
       }),
       expect.objectContaining({
         assetId: HERO_BATTLE_1_STAR_ASSET_IDS.stoneVanguard,
-        filePath: 'assets/heroes/stone-vanguard/battle-1star.png',
+        filePath: 'assets/heroes/stone-vanguard/runtime/battle-1star.png',
         phaserKey: 'hero:stone-vanguard:battle:1star',
       }),
       expect.objectContaining({
         assetId: HERO_BATTLE_1_STAR_ASSET_IDS.starlightPriest,
-        filePath: 'assets/heroes/starlight-priest/battle-1star.png',
+        filePath: 'assets/heroes/starlight-priest/runtime/battle-1star.png',
         phaserKey: 'hero:starlight-priest:battle:1star',
       }),
     ]);
@@ -93,10 +93,10 @@ describe('AssetManifest 与 AssetRegistry', () => {
       HERO_BATTLE_1_STAR_ASSET_IDS.starlightPriest,
     ]);
     expect(calls).toEqual([
-      'image:assets/heroes/wind-hunter/battle-1star',
-      'image:assets/heroes/ember-mage/battle-1star',
-      'image:assets/heroes/stone-vanguard/battle-1star',
-      'image:assets/heroes/starlight-priest/battle-1star',
+      'image:assets/heroes/wind-hunter/runtime/battle-1star',
+      'image:assets/heroes/ember-mage/runtime/battle-1star',
+      'image:assets/heroes/stone-vanguard/runtime/battle-1star',
+      'image:assets/heroes/starlight-priest/runtime/battle-1star',
     ]);
   });
 

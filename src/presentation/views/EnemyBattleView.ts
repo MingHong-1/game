@@ -24,6 +24,8 @@ export class EnemyBattleView {
   public readonly visualContainer: Phaser.GameObjects.Container;
   private readonly healthBar: HealthBar;
   private readonly statusEffectLayer: Phaser.GameObjects.Container;
+  private readonly selectionRing: Phaser.GameObjects.Arc;
+  private readonly hitArea: Phaser.GameObjects.Arc;
   private readonly cleanup = new UiCleanupBag();
   private previousHealth: number;
   private readonly alwaysShowHealth: boolean;
@@ -34,6 +36,7 @@ export class EnemyBattleView {
     enemy: EnemySnapshot,
     assets: AssetRegistry,
     visuals: EnemyVisualRegistry,
+    onSelect?: (enemyInstanceId: string) => void,
   ) {
     const definition = visuals.get(enemy.definitionId);
     const selection = selectEnemyBattleVisual(definition, assets);
@@ -81,11 +84,23 @@ export class EnemyBattleView {
       },
     );
     this.statusEffectLayer = scene.add.container(0, 0);
+    this.selectionRing = scene.add
+      .circle(0, 0, enemy.radius + 8, UI_COLORS.shadow, 0)
+      .setStrokeStyle(2, UI_COLORS.star, 0.92)
+      .setVisible(false);
+    this.hitArea = scene.add
+      .circle(0, 0, enemy.radius + 9, UI_COLORS.white, 0.001)
+      .setInteractive({ useHandCursor: true });
+    if (onSelect !== undefined) {
+      this.hitArea.on('pointerup', () => onSelect(enemy.id));
+    }
     const children: Phaser.GameObjects.GameObject[] = [
       shadow,
+      this.selectionRing,
       body,
       this.healthBar.container,
       this.statusEffectLayer,
+      this.hitArea,
     ];
     if (enemy.kind !== 'normal') {
       children.push(
@@ -136,6 +151,10 @@ export class EnemyBattleView {
     );
   }
 
+  public setSelected(selected: boolean): void {
+    this.selectionRing.setVisible(selected);
+  }
+
   public remove(
     reason: EnemyRemovalVisual,
     onComplete?: () => void,
@@ -165,6 +184,7 @@ export class EnemyBattleView {
     if (this.destroyed) return;
     this.destroyed = true;
     this.cleanup.destroy();
+    this.hitArea.removeAllListeners();
     this.healthBar.destroy();
     this.scene.tweens.killTweensOf([
       this.rootContainer,

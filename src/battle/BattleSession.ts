@@ -20,6 +20,10 @@ import {
   type SummonResult,
 } from './SummonSystem';
 import type { BattleEvent } from './BattleEvents';
+import {
+  BattleStatisticsTracker,
+  type BattleStatisticsSnapshot,
+} from './statistics/BattleStatisticsTracker';
 
 export interface BattleSessionSnapshot extends BattleSnapshot {
   readonly energy: number;
@@ -32,6 +36,7 @@ export interface BattleSessionSnapshot extends BattleSnapshot {
   readonly bagRemainingCount: number;
   readonly canSummonIntoSlot: boolean;
   readonly slots: readonly HeroSlotSnapshot[];
+  readonly statistics: BattleStatisticsSnapshot;
 }
 
 export interface BattleSessionOptions {
@@ -54,6 +59,7 @@ export class BattleSession {
   private readonly slots: SlotSystem;
   private readonly summoning: SummonSystem;
   private readonly presentationEvents: BattleEvent[] = [];
+  private readonly statistics = new BattleStatisticsTracker();
 
   public constructor(options: BattleSessionOptions) {
     this.config = options.config;
@@ -125,6 +131,9 @@ export class BattleSession {
   public update(frameDeltaMs: number): void {
     this.combat.update(frameDeltaMs);
     for (const event of this.combat.drainEvents()) {
+      if (event.type === 'damage-applied') {
+        this.statistics.recordDamage(event.result);
+      }
       this.presentationEvents.push(event);
       if (event.type === 'enemy-killed' || event.type === 'wave-completed') {
         this.energy.credit(event.energyReward);
@@ -165,6 +174,7 @@ export class BattleSession {
 
   public reset(): void {
     this.presentationEvents.length = 0;
+    this.statistics.reset();
     this.energy.reset();
     this.slots.reset();
     this.summoning.reset(this.randomStreams.create('summonRng'));
@@ -186,6 +196,7 @@ export class BattleSession {
       bagRemainingCount: this.summoning.bagRemainingCount,
       canSummonIntoSlot: this.summoning.canSummonIntoSlot,
       slots: this.slots.getSnapshot(),
+      statistics: this.statistics.getSnapshot(combatSnapshot.battleElapsedMs),
     };
   }
 

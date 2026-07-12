@@ -58,6 +58,8 @@ export class BattlefieldView {
   private readonly edgeFlash: Phaser.GameObjects.Rectangle;
   private previousCoreHealth: number | undefined;
   private readonly vfx: VfxManager;
+  private selectedEnemyInstanceId: string | null = null;
+  private onEnemySelected: ((enemyInstanceId: string | null) => void) | undefined;
 
   public constructor(
     private readonly scene: Phaser.Scene,
@@ -136,6 +138,23 @@ export class BattlefieldView {
     );
   }
 
+  public setEnemySelectionHandler(
+    handler: (enemyInstanceId: string | null) => void,
+  ): void {
+    this.onEnemySelected = handler;
+  }
+
+  public setSelectedEnemyId(enemyInstanceId: string | null): void {
+    if (this.selectedEnemyInstanceId === enemyInstanceId) return;
+    if (this.selectedEnemyInstanceId !== null) {
+      this.enemyViews.get(this.selectedEnemyInstanceId)?.setSelected(false);
+    }
+    this.selectedEnemyInstanceId = enemyInstanceId;
+    if (enemyInstanceId !== null) {
+      this.enemyViews.get(enemyInstanceId)?.setSelected(true);
+    }
+  }
+
   public handlePresentationEvents(
     events: readonly BattlePresentationEvent[],
   ): void {
@@ -165,6 +184,7 @@ export class BattlefieldView {
     for (const view of this.retiringEnemyViews) view.destroy();
     this.retiringEnemyViews.clear();
     this.pendingEnemyRemoval.clear();
+    this.selectedEnemyInstanceId = null;
     this.projectileViews.clear((view) => {
       view.vfx.destroy();
     });
@@ -401,11 +421,20 @@ export class BattlefieldView {
           enemy,
           this.assets,
           this.enemyVisuals,
+          (enemyInstanceId) => {
+            this.setSelectedEnemyId(enemyInstanceId);
+            this.onEnemySelected?.(enemyInstanceId);
+          },
         ),
       );
+      view.setSelected(enemy.id === this.selectedEnemyInstanceId);
       view.update(enemy);
     }
     this.enemyViews.sweep((view, enemyInstanceId) => {
+      if (enemyInstanceId === this.selectedEnemyInstanceId) {
+        this.selectedEnemyInstanceId = null;
+        this.onEnemySelected?.(null);
+      }
       const reason = this.pendingEnemyRemoval.get(enemyInstanceId) ?? 'immediate';
       this.pendingEnemyRemoval.delete(enemyInstanceId);
       if (reason === 'immediate') {

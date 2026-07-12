@@ -3,9 +3,11 @@ import Phaser from 'phaser';
 import type { AssetRegistry } from '../../assets/AssetRegistry';
 import type { HeroDefinition } from '../../battle/definitions';
 import type { HeroStar } from '../../battle/HeroStar';
+import { deriveHeroStarPresentation } from '../HeroStarPresentationModel';
 import { deriveHeroStarUiState } from '../../ui/state/HeroStarUiState';
 import { UiCleanupBag } from '../../ui/state/UiCleanupBag';
 import { UI_COLORS, toCssColor } from '../../ui/theme/uiTheme';
+import { UI_METRICS } from '../../ui/theme/uiMetrics';
 import { UI_FONT_FAMILY, UI_FONT_SIZES } from '../../ui/theme/uiTypography';
 import {
   type EntityVisualState,
@@ -17,14 +19,19 @@ import {
   selectHeroBattleVisual,
 } from '../VisualDefinitions';
 import { createProgrammaticBody } from './ProgrammaticVisualFactory';
+import { HERO_VISUAL_LAYER_ORDER } from '../../ui/state/HeroSlotLayerModel';
 
 export interface HeroBattleViewOptions {
   readonly showLabels: boolean;
+  readonly echoDisplaySize: number;
   readonly maximumDisplaySize: number;
 }
 
 export class HeroBattleView {
   public readonly container: Phaser.GameObjects.Container;
+  public readonly echoLayer: Phaser.GameObjects.Container;
+  public readonly mainLayer: Phaser.GameObjects.Container;
+  public readonly layerOrder = HERO_VISUAL_LAYER_ORDER;
   private readonly visualContainer: Phaser.GameObjects.Container;
   private readonly statusLayer: Phaser.GameObjects.Container;
   private readonly cleanup = new UiCleanupBag();
@@ -48,52 +55,74 @@ export class HeroBattleView {
     this.baseVisualY = definition.slotOffset.y;
     this.idleDurationMs = definition.idle.durationMs;
     this.idleScaleAmount = definition.idle.scaleAmount;
+    if (!Number.isInteger(this.baseVisualX) || !Number.isInteger(this.baseVisualY)) {
+      throw new RangeError('英雄格位视觉偏移必须使用整数逻辑坐标');
+    }
     const selection = selectHeroBattleVisual(definition, starLevel, assets);
+    const presentation = deriveHeroStarPresentation(starLevel);
     const idleClip = resolveAnimationClip(
       definition.animations,
       'idle',
       assets,
     );
-    let usesTexture = false;
-    const body = selection.kind === 'texture' &&
-        scene.textures.exists(selection.textureKey)
-      ? (() => {
-          usesTexture = true;
-          return scene.add
-            .image(0, 0, selection.textureKey)
-            .setOrigin(definition.footAnchor.x, definition.footAnchor.y);
-        })()
-      : idleClip !== null && scene.textures.exists(idleClip.textureKey)
-        ? (() => {
-            usesTexture = true;
-            return scene.add
-              .sprite(0, 0, idleClip.textureKey)
-              .setOrigin(definition.footAnchor.x, definition.footAnchor.y)
-              .play(idleClip.clip.animationKey);
-          })()
-        : createProgrammaticBody(
-            scene,
-            definition.fallbackShape,
-            definition.fallbackColor,
-            Math.min(14, options.maximumDisplaySize / 2),
-          );
-    const bounds = body.getBounds();
-    const normalizedScale = resolveHeroBodyScale(
-      usesTexture ? 'texture' : 'programmatic',
-      definition.defaultScale,
-      Math.max(bounds.width, 1),
-      Math.max(bounds.height, 1),
-      options.maximumDisplaySize,
+    if (selection.kind === 'texture') {
+      scene.textures
+        .get(selection.textureKey)
+        .setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    const mainBody = this.createBody(
+      selection,
+      idleClip,
+      definition,
+      Math.min(
+        Math.round(definition.displaySize * presentation.mainSizeScale),
+        options.maximumDisplaySize,
+      ),
     );
-    body.setScale(normalizedScale);
+    const echoBodies = presentation.echoes.map((echo) => {
+      const body = this.createBody(
+        selection,
+        idleClip,
+        definition,
+        Math.min(
+          Math.round(definition.displaySize * echo.sizeScale),
+          options.echoDisplaySize,
+        ),
+      );
+      body.setPosition(echo.offsetX, echo.offsetY).setAlpha(echo.alpha);
+      return body;
+    });
     const base = scene.add
-      .circle(0, 0, 19, UI_COLORS.pageDeep, 0.72)
+      .circle(0, UI_METRICS.slot.baseAuraOffsetY, 19, UI_COLORS.pageDeep, 0.72)
       .setStrokeStyle(1, definition.fallbackColor, 0.72);
+    const maximumStarAura = presentation.showMaximumStarAura
+      ? scene.add
+          .circle(
+            0,
+            UI_METRICS.slot.maximumStarAuraOffsetY,
+            23,
+            UI_COLORS.star,
+            0.08,
+          )
+          .setStrokeStyle(2, UI_COLORS.star, 0.82)
+      : null;
     this.statusLayer = scene.add.container(0, 0);
+    this.echoLayer = scene.add.container(0, 0, [
+      base,
+      ...(maximumStarAura === null ? [] : [maximumStarAura]),
+      ...echoBodies,
+    ]);
+    this.mainLayer = scene.add.container(0, 0, [
+      mainBody,
+      this.statusLayer,
+    ]);
     this.visualContainer = scene.add.container(
       definition.slotOffset.x,
       definition.slotOffset.y,
-      [base, body, this.statusLayer],
+      [
+        this.echoLayer,
+        this.mainLayer,
+      ],
     );
     const children: Phaser.GameObjects.GameObject[] = [this.visualContainer];
     if (options.showLabels) {
@@ -114,7 +143,7 @@ export class HeroBattleView {
           .setOrigin(0.5),
       );
     }
-    this.container = scene.add.container(0, 0, children).setDepth(definition.depth);
+    this.container = scene.add.container(0, 0, children);
     this.playIdle(definition.idle.durationMs, definition.idle.scaleAmount);
   }
 
@@ -231,5 +260,50 @@ export class HeroBattleView {
     this.cleanup.clear('action');
     this.cleanup.clear('idle');
     this.scene.tweens.killTweensOf(this.visualContainer);
+  }
+
+  private createBody(
+    selection: ReturnType<typeof selectHeroBattleVisual>,
+    idleClip: ReturnType<typeof resolveAnimationClip>,
+    definition: ReturnType<HeroVisualRegistry['get']>,
+    targetDisplaySize: number,
+  ): Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Shape {
+    let usesTexture = false;
+    const body = selection.kind === 'texture' &&
+        this.scene.textures.exists(selection.textureKey)
+      ? (() => {
+          usesTexture = true;
+          return this.scene.add
+            .image(0, 0, selection.textureKey)
+            .setOrigin(definition.footAnchor.x, definition.footAnchor.y);
+        })()
+      : idleClip !== null && this.scene.textures.exists(idleClip.textureKey)
+        ? (() => {
+            usesTexture = true;
+            return this.scene.add
+              .sprite(0, 0, idleClip.textureKey)
+              .setOrigin(definition.footAnchor.x, definition.footAnchor.y)
+              .play(idleClip.clip.animationKey);
+          })()
+        : createProgrammaticBody(
+            this.scene,
+            definition.fallbackShape,
+            definition.fallbackColor,
+            14,
+          );
+    const bounds = body.getBounds();
+    const normalizedScale = resolveHeroBodyScale(
+      usesTexture ? 'texture' : 'programmatic',
+      targetDisplaySize,
+      Math.max(bounds.width, 1),
+      Math.max(bounds.height, 1),
+      targetDisplaySize,
+    );
+    body.setScale(
+      usesTexture
+        ? normalizedScale
+        : normalizedScale * (targetDisplaySize / definition.displaySize),
+    );
+    return body;
   }
 }

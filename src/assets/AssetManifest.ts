@@ -175,22 +175,22 @@ export const GAME_ASSET_MANIFEST: AssetManifest = Object.freeze({
     heroBattleImageEntry(
       HERO_BATTLE_1_STAR_ASSET_IDS.galeHunter,
       'gale-hunter',
-      'assets/heroes/wind-hunter/battle-1star.png',
+      'assets/heroes/wind-hunter/runtime/battle-1star.png',
     ),
     heroBattleImageEntry(
       HERO_BATTLE_1_STAR_ASSET_IDS.emberMage,
       'ember-mage',
-      'assets/heroes/ember-mage/battle-1star.png',
+      'assets/heroes/ember-mage/runtime/battle-1star.png',
     ),
     heroBattleImageEntry(
       HERO_BATTLE_1_STAR_ASSET_IDS.stoneVanguard,
       'stone-vanguard',
-      'assets/heroes/stone-vanguard/battle-1star.png',
+      'assets/heroes/stone-vanguard/runtime/battle-1star.png',
     ),
     heroBattleImageEntry(
       HERO_BATTLE_1_STAR_ASSET_IDS.starlightPriest,
       'starlight-priest',
-      'assets/heroes/starlight-priest/battle-1star.png',
+      'assets/heroes/starlight-priest/runtime/battle-1star.png',
     ),
   ]),
 });

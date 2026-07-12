@@ -35,7 +35,8 @@ export interface HeroVisualDefinition {
   readonly spriteSheetAssetId?: string;
   readonly fallbackColor: number;
   readonly fallbackShape: FallbackShape;
-  readonly defaultScale: number;
+  /** 运行纹理的整数目标显示尺寸；统一标准之外只用于个别英雄微调。 */
+  readonly displaySize: number;
   readonly footAnchor: VisualAnchor;
   readonly portraitAnchor: VisualAnchor;
   readonly slotOffset: VisualOffset;
@@ -89,13 +90,13 @@ export type VisualSelection =
 
 export function resolveHeroBodyScale(
   sourceKind: VisualSelection['kind'],
-  configuredTextureScale: number,
+  targetDisplaySize: number,
   sourceWidth: number,
   sourceHeight: number,
   maximumDisplaySize: number,
 ): number {
   for (const [label, value] of [
-    ['configuredTextureScale', configuredTextureScale],
+    ['targetDisplaySize', targetDisplaySize],
     ['sourceWidth', sourceWidth],
     ['sourceHeight', sourceHeight],
     ['maximumDisplaySize', maximumDisplaySize],
@@ -105,8 +106,8 @@ export function resolveHeroBodyScale(
     }
   }
   const largestDimension = Math.max(sourceWidth, sourceHeight);
-  const preferredScale = sourceKind === 'texture' ? configuredTextureScale : 1;
-  return Math.min(preferredScale, maximumDisplaySize / largestDimension);
+  if (sourceKind === 'programmatic') return 1;
+  return Math.min(targetDisplaySize, maximumDisplaySize) / largestDimension;
 }
 
 function createRegistry<TDefinition>(
