@@ -45,10 +45,10 @@ export class HeroSlotView {
   ) {
     this.background = scene.add.graphics();
     const runeRing = scene.add
-      .circle(0, -7, 18, UI_COLORS.primary, 0.03)
+      .circle(0, UI_METRICS.slot.runeY, 18, UI_COLORS.primary, 0.03)
       .setStrokeStyle(1, UI_COLORS.primary, 0.18);
     const runeStar = scene.add
-      .star(0, -7, 6, 5, 12, UI_COLORS.primary, 0.08)
+      .star(0, UI_METRICS.slot.runeY, 6, 5, 12, UI_COLORS.primary, 0.08)
       .setStrokeStyle(1, UI_COLORS.primary, 0.22);
     this.emptyMark = scene.add.container(0, 0, [runeRing, runeStar]);
     const shackle = scene.add
@@ -60,7 +60,7 @@ export class HeroSlotView {
     const keyhole = scene.add.circle(0, -3, 2.5, UI_COLORS.pageDeep, 0.95);
     this.lockIcon = scene.add.container(0, 0, [shackle, lockBody, keyhole]);
     this.nameText = scene.add
-      .text(0, 25, '', {
+      .text(0, UI_METRICS.slot.nameY, '', {
         align: 'center',
         color: toCssColor(UI_COLORS.textSecondary),
         fontFamily: UI_FONT_FAMILY,
@@ -70,7 +70,7 @@ export class HeroSlotView {
       })
       .setOrigin(0.5);
     this.detailText = scene.add
-      .text(0, 46, '', {
+      .text(0, UI_METRICS.slot.detailY, '', {
         align: 'center',
         color: toCssColor(UI_COLORS.textMuted),
         fontFamily: UI_FONT_FAMILY,
@@ -157,7 +157,7 @@ export class HeroSlotView {
             this.heroVisuals,
             {
               showLabels: false,
-              maximumDisplaySize: UI_METRICS.slot.heroRadius * 2,
+              maximumDisplaySize: UI_METRICS.slot.heroMaximumDisplaySize,
             },
           );
           this.container.addAt(this.heroBattleView.container, 3);
@@ -260,7 +260,7 @@ export class HeroSlotView {
     );
     this.background.fillRoundedRect(
       -width / 2,
-      -24,
+      UI_METRICS.slot.backgroundTop,
       width,
       height,
       UI_METRICS.slot.cornerRadius,
@@ -272,7 +272,7 @@ export class HeroSlotView {
     );
     this.background.strokeRoundedRect(
       -width / 2,
-      -24,
+      UI_METRICS.slot.backgroundTop,
       width,
       height,
       UI_METRICS.slot.cornerRadius,

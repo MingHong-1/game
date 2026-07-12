@@ -142,8 +142,55 @@ export function validateAssetManifest(manifest: AssetManifest): void {
   }
 }
 
-/** 当前没有正式资源，因此清单显式为空，不会产生任何外部请求。 */
+export const HERO_BATTLE_1_STAR_ASSET_IDS = Object.freeze({
+  galeHunter: 'hero.gale-hunter.battle.1star',
+  emberMage: 'hero.ember-mage.battle.1star',
+  stoneVanguard: 'hero.stone-vanguard.battle.1star',
+  starlightPriest: 'hero.starlight-priest.battle.1star',
+});
+
+function heroBattleImageEntry(
+  assetId: string,
+  heroId: string,
+  filePath: string,
+): AssetManifestEntry {
+  const entry: AssetManifestEntry = {
+    assetId,
+    assetType: 'heroBattleImage',
+    filePath,
+    phaserKey: `hero:${heroId}:battle:1star`,
+    enabled: true,
+    preloadGroup: 'battle-core',
+    owner: { kind: 'hero', id: heroId },
+    required: false,
+    fallback: 'programmatic',
+  };
+  return Object.freeze(entry);
+}
+
+/** 只登记已经实际存在、完成规格核对并明确启用的本地资源。 */
 export const GAME_ASSET_MANIFEST: AssetManifest = Object.freeze({
   version: 1,
-  entries: Object.freeze([]),
+  entries: Object.freeze([
+    heroBattleImageEntry(
+      HERO_BATTLE_1_STAR_ASSET_IDS.galeHunter,
+      'gale-hunter',
+      'assets/heroes/wind-hunter/battle-1star.png',
+    ),
+    heroBattleImageEntry(
+      HERO_BATTLE_1_STAR_ASSET_IDS.emberMage,
+      'ember-mage',
+      'assets/heroes/ember-mage/battle-1star.png',
+    ),
+    heroBattleImageEntry(
+      HERO_BATTLE_1_STAR_ASSET_IDS.stoneVanguard,
+      'stone-vanguard',
+      'assets/heroes/stone-vanguard/battle-1star.png',
+    ),
+    heroBattleImageEntry(
+      HERO_BATTLE_1_STAR_ASSET_IDS.starlightPriest,
+      'starlight-priest',
+      'assets/heroes/starlight-priest/battle-1star.png',
+    ),
+  ]),
 });

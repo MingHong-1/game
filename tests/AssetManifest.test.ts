@@ -7,6 +7,7 @@ import {
   type AssetType,
   validateAssetManifest,
   GAME_ASSET_MANIFEST,
+  HERO_BATTLE_1_STAR_ASSET_IDS,
 } from '../src/assets/AssetManifest';
 import { AssetRegistry } from '../src/assets/AssetRegistry';
 
@@ -33,9 +34,70 @@ function manifest(entries: readonly AssetManifestEntry[]): AssetManifest {
 }
 
 describe('AssetManifest 与 AssetRegistry', () => {
-  it('当前正式清单为空，因此默认启动不会请求不存在的资源', () => {
+  it('最终只登记并加载四名运行时英雄的1星真实资源', () => {
     const registry = new AssetRegistry(GAME_ASSET_MANIFEST);
-    expect(registry.getEnabledEntries()).toEqual([]);
+    expect(registry.getEnabledEntries()).toEqual([
+      expect.objectContaining({
+        assetId: HERO_BATTLE_1_STAR_ASSET_IDS.galeHunter,
+        filePath: 'assets/heroes/wind-hunter/battle-1star.png',
+        phaserKey: 'hero:gale-hunter:battle:1star',
+      }),
+      expect.objectContaining({
+        assetId: HERO_BATTLE_1_STAR_ASSET_IDS.emberMage,
+        filePath: 'assets/heroes/ember-mage/battle-1star.png',
+        phaserKey: 'hero:ember-mage:battle:1star',
+      }),
+      expect.objectContaining({
+        assetId: HERO_BATTLE_1_STAR_ASSET_IDS.stoneVanguard,
+        filePath: 'assets/heroes/stone-vanguard/battle-1star.png',
+        phaserKey: 'hero:stone-vanguard:battle:1star',
+      }),
+      expect.objectContaining({
+        assetId: HERO_BATTLE_1_STAR_ASSET_IDS.starlightPriest,
+        filePath: 'assets/heroes/starlight-priest/battle-1star.png',
+        phaserKey: 'hero:starlight-priest:battle:1star',
+      }),
+    ]);
+    for (const item of registry.getEnabledEntries()) {
+      expect(item).toMatchObject({
+        assetType: 'heroBattleImage',
+        enabled: true,
+        preloadGroup: 'battle-core',
+        required: false,
+        fallback: 'programmatic',
+      });
+      expect(item.filePath.startsWith('assets/heroes/')).toBe(true);
+    }
+    expect(new Set(GAME_ASSET_MANIFEST.entries.map((item) => item.assetId)).size)
+      .toBe(4);
+    expect(new Set(GAME_ASSET_MANIFEST.entries.map((item) => item.phaserKey)).size)
+      .toBe(4);
+    expect(
+      GAME_ASSET_MANIFEST.entries.some(
+        (item) => item.owner.id === 'forest-summoner',
+      ),
+    ).toBe(false);
+    expect(
+      GAME_ASSET_MANIFEST.entries.some((item) => /battle[.-](3|4)star/.test(item.assetId)),
+    ).toBe(false);
+  });
+
+  it('四张启用PNG进入图片加载队列且没有其他资源请求', () => {
+    const registry = new AssetRegistry(GAME_ASSET_MANIFEST);
+    const calls: string[] = [];
+    const queued = new AssetLoader(registry).queueEnabled(createLoadQueue(calls));
+    expect(queued.map((item) => item.assetId)).toEqual([
+      HERO_BATTLE_1_STAR_ASSET_IDS.galeHunter,
+      HERO_BATTLE_1_STAR_ASSET_IDS.emberMage,
+      HERO_BATTLE_1_STAR_ASSET_IDS.stoneVanguard,
+      HERO_BATTLE_1_STAR_ASSET_IDS.starlightPriest,
+    ]);
+    expect(calls).toEqual([
+      'image:assets/heroes/wind-hunter/battle-1star',
+      'image:assets/heroes/ember-mage/battle-1star',
+      'image:assets/heroes/stone-vanguard/battle-1star',
+      'image:assets/heroes/starlight-priest/battle-1star',
+    ]);
   });
 
   it('未启用资源不进入加载队列且保持 disabled', () => {

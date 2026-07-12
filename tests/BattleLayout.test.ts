@@ -10,6 +10,7 @@ import { HERO_DEFINITIONS_BY_ID } from '../src/data/heroDefinitions';
 import { PROTOTYPE_LEVEL } from '../src/data/levelDefinitions';
 import { GAME_HEIGHT, GAME_WIDTH } from '../src/core/gameConstants';
 import { UI_METRICS } from '../src/ui/theme/uiMetrics';
+import { createBottomCommandLayout } from '../src/ui/layout/BottomCommandLayout';
 
 describe('正式战场布局', () => {
   it('道路从顶部沿纵向 S 形通向战斗区底部中央星核', () => {
@@ -154,10 +155,11 @@ describe('正式战场布局', () => {
       }
     }
 
-    const controls = UI_METRICS.layout.commandDeckContent;
+    const controls = createBottomCommandLayout(PROTOTYPE_LEVEL.heroSlots);
     const commandX = UI_METRICS.layout.commandDeck.x;
-    const leftButtonRight = commandX + controls.skillX + 72;
-    const rightButtonLeft = commandX + controls.mergeX - 72;
+    const leftButtonRight = commandX + controls.left.skillPreview.x +
+      controls.left.skillPreview.width;
+    const rightButtonLeft = commandX + controls.right.merge.x;
     expect(leftButtonRight).toBeLessThan(slots[0]!.x - halfWidth);
     expect(rightButtonLeft).toBeGreaterThan(slots[4]!.x + halfWidth);
   });

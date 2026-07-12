@@ -87,6 +87,28 @@ export type VisualSelection =
   | ProgrammaticVisualSelection
   | TextureVisualSelection;
 
+export function resolveHeroBodyScale(
+  sourceKind: VisualSelection['kind'],
+  configuredTextureScale: number,
+  sourceWidth: number,
+  sourceHeight: number,
+  maximumDisplaySize: number,
+): number {
+  for (const [label, value] of [
+    ['configuredTextureScale', configuredTextureScale],
+    ['sourceWidth', sourceWidth],
+    ['sourceHeight', sourceHeight],
+    ['maximumDisplaySize', maximumDisplaySize],
+  ] as const) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new RangeError(`${label}必须是正有限数字`);
+    }
+  }
+  const largestDimension = Math.max(sourceWidth, sourceHeight);
+  const preferredScale = sourceKind === 'texture' ? configuredTextureScale : 1;
+  return Math.min(preferredScale, maximumDisplaySize / largestDimension);
+}
+
 function createRegistry<TDefinition>(
   definitions: readonly TDefinition[],
   getId: (definition: TDefinition) => string,

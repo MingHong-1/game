@@ -3,10 +3,15 @@ import Phaser from 'phaser';
 import { ButtonStateController } from '../state/ButtonStateController';
 import { UiCleanupBag } from '../state/UiCleanupBag';
 import { UI_METRICS } from '../theme/uiMetrics';
-import { UI_COLORS, toCssColor } from '../theme/uiTheme';
+import {
+  type ActionButtonVariant,
+  resolveActionButtonVisualStyle,
+  UI_COLORS,
+  toCssColor,
+} from '../theme/uiTheme';
 import { UI_FONT_FAMILY, UI_FONT_SIZES } from '../theme/uiTypography';
 
-export type GameButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type GameButtonVariant = ActionButtonVariant;
 
 export interface GameButtonOptions {
   readonly label: string;
@@ -188,33 +193,15 @@ export class GameButton {
   private draw(): void {
     const enabled = this.controller.isEnabled;
     const variant = this.options.variant ?? 'secondary';
-    let fill: number = UI_COLORS.panelHighlight;
-    let border: number = UI_COLORS.panelBorderSoft;
-    if (variant === 'primary') {
-      fill = UI_COLORS.primaryPressed;
-      border = UI_COLORS.primary;
-    } else if (variant === 'danger') {
-      fill = UI_COLORS.danger;
-      border = UI_COLORS.coreDanger;
-    } else if (variant === 'ghost') {
-      fill = UI_COLORS.panel;
-      border = UI_COLORS.panelBorder;
-    }
-    if (this.selected) {
-      fill = UI_COLORS.panelHighlight;
-      border = UI_COLORS.star;
-    }
-    if (this.focused && enabled) {
-      fill = variant === 'danger' ? UI_COLORS.dangerHover : UI_COLORS.primaryHover;
-    }
-    if (this.pressed && enabled) fill = UI_COLORS.primaryPressed;
-    if (!enabled) {
-      fill = UI_COLORS.disabled;
-      border = UI_COLORS.locked;
-    }
+    const style = resolveActionButtonVisualStyle(variant, {
+      enabled,
+      selected: this.selected,
+      focused: this.focused,
+      pressed: this.pressed,
+    });
     const height = this.options.height ?? UI_METRICS.button.height;
     this.visual.clear();
-    this.visual.fillStyle(fill, enabled ? 0.94 : 0.5);
+    this.visual.fillStyle(style.fill, style.fillAlpha);
     this.visual.fillRoundedRect(
       -this.options.width / 2,
       -height / 2,
@@ -224,8 +211,8 @@ export class GameButton {
     );
     this.visual.lineStyle(
       this.focused ? 3 : UI_METRICS.button.borderWidth,
-      border,
-      enabled ? 1 : 0.55,
+      style.border,
+      style.borderAlpha,
     );
     this.visual.strokeRoundedRect(
       -this.options.width / 2,
@@ -234,6 +221,6 @@ export class GameButton {
       height,
       UI_METRICS.button.cornerRadius,
     );
-    this.container.setAlpha(enabled ? 1 : 0.58);
+    this.container.setAlpha(style.containerAlpha);
   }
 }

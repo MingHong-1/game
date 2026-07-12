@@ -10,6 +10,7 @@ export interface ResourceDisplayOptions {
   readonly icon: string;
   readonly width: number;
   readonly accentColor?: number;
+  readonly height?: number;
 }
 
 export class ResourceDisplay {
@@ -119,14 +120,27 @@ export class ResourceDisplay {
 
   private draw(): void {
     const width = this.options.width;
+    const height = this.options.height ?? UI_METRICS.statCard.height;
     this.background.clear();
     this.background.fillStyle(UI_COLORS.pageDeep, 0.58);
-    this.background.fillRoundedRect(-width / 2, -24, width, 48, 9);
+    this.background.fillRoundedRect(
+      -width / 2,
+      -height / 2,
+      width,
+      height,
+      UI_METRICS.statCard.cornerRadius,
+    );
     this.background.lineStyle(
       1,
       this.insufficient ? UI_COLORS.coreDanger : UI_COLORS.panelBorderSoft,
       0.85,
     );
-    this.background.strokeRoundedRect(-width / 2, -24, width, 48, 9);
+    this.background.strokeRoundedRect(
+      -width / 2,
+      -height / 2,
+      width,
+      height,
+      UI_METRICS.statCard.cornerRadius,
+    );
   }
 }

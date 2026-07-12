@@ -13,6 +13,7 @@ import {
 } from '../AnimationDefinitions';
 import {
   type HeroVisualRegistry,
+  resolveHeroBodyScale,
   selectHeroBattleVisual,
 } from '../VisualDefinitions';
 import { createProgrammaticBody } from './ProgrammaticVisualFactory';
@@ -53,16 +54,23 @@ export class HeroBattleView {
       'idle',
       assets,
     );
+    let usesTexture = false;
     const body = selection.kind === 'texture' &&
         scene.textures.exists(selection.textureKey)
-      ? scene.add
-          .image(0, 0, selection.textureKey)
-          .setOrigin(definition.footAnchor.x, definition.footAnchor.y)
+      ? (() => {
+          usesTexture = true;
+          return scene.add
+            .image(0, 0, selection.textureKey)
+            .setOrigin(definition.footAnchor.x, definition.footAnchor.y);
+        })()
       : idleClip !== null && scene.textures.exists(idleClip.textureKey)
-        ? scene.add
-            .sprite(0, 0, idleClip.textureKey)
-            .setOrigin(definition.footAnchor.x, definition.footAnchor.y)
-            .play(idleClip.clip.animationKey)
+        ? (() => {
+            usesTexture = true;
+            return scene.add
+              .sprite(0, 0, idleClip.textureKey)
+              .setOrigin(definition.footAnchor.x, definition.footAnchor.y)
+              .play(idleClip.clip.animationKey);
+          })()
         : createProgrammaticBody(
             scene,
             definition.fallbackShape,
@@ -70,10 +78,12 @@ export class HeroBattleView {
             Math.min(14, options.maximumDisplaySize / 2),
           );
     const bounds = body.getBounds();
-    const largestDimension = Math.max(bounds.width, bounds.height, 1);
-    const normalizedScale = Math.min(
+    const normalizedScale = resolveHeroBodyScale(
+      usesTexture ? 'texture' : 'programmatic',
       definition.defaultScale,
-      options.maximumDisplaySize / largestDimension,
+      Math.max(bounds.width, 1),
+      Math.max(bounds.height, 1),
+      options.maximumDisplaySize,
     );
     body.setScale(normalizedScale);
     const base = scene.add
@@ -132,10 +142,12 @@ export class HeroBattleView {
     if (this.destroyed || this.currentState === 'disabled') return;
     this.currentState = 'attack';
     this.stopMotionTweens();
-    this.visualContainer.setY(-10).setScale(1);
+    this.visualContainer
+      .setPosition(this.baseVisualX, this.baseVisualY - 2)
+      .setScale(1);
     const tween = this.scene.tweens.add({
       targets: this.visualContainer,
-      y: -14,
+      y: this.baseVisualY - 6,
       scaleX: 1.08,
       scaleY: 0.94,
       duration: 70,

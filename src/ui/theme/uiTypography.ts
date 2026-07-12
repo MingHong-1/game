@@ -5,6 +5,8 @@ export const UI_MONO_FONT_FAMILY =
   'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
 
 export const UI_FONT_SIZES = Object.freeze({
+  helper: 12,
+  label: 14,
   caption: 11,
   small: 13,
   body: 15,

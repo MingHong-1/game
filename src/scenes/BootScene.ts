@@ -114,7 +114,7 @@ export class BootScene extends Phaser.Scene {
       GAME_ASSET_REGISTRY,
     );
 
-    // 当前清单没有启用正式资源，因此直接使用程序 fallback。
+    // 正式资源按 Manifest 显式启用；任何可选失败都继续使用程序 fallback。
     this.time.delayedCall(BOOT_DELAY_MS, () => {
       this.scene.start(SceneKey.MainMenu);
     });

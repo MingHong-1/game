@@ -29,6 +29,17 @@ import { HealthBar } from '../ui/components/HealthBar';
 import { HeroSlotView } from '../ui/components/HeroSlotView';
 import { Panel } from '../ui/components/Panel';
 import { ResourceDisplay } from '../ui/components/ResourceDisplay';
+import { SectionLabel } from '../ui/components/SectionLabel';
+import {
+  isUiDebugEnabled,
+  UiDebugOverlay,
+} from '../ui/debug/UiDebugOverlay';
+import {
+  type BottomCommandLayout,
+  centerOf,
+  createBottomCommandLayout,
+  type UiRect,
+} from '../ui/layout/BottomCommandLayout';
 import { deriveBattleUiState } from '../ui/state/BattleUiState';
 import { UI_METRICS } from '../ui/theme/uiMetrics';
 import {
@@ -63,6 +74,7 @@ export class PrototypeScene extends Phaser.Scene {
   private coreHealthBar!: HealthBar;
   private energyDisplay!: ResourceDisplay;
   private costDisplay!: ResourceDisplay;
+  private skillStatusDisplay!: ResourceDisplay;
   private progressDisplay!: ResourceDisplay;
   private formationDisplay!: ResourceDisplay;
   private notice!: BattleNotice;
@@ -72,6 +84,8 @@ export class PrototypeScene extends Phaser.Scene {
   private speedTwoButton!: GameButton;
   private skillButton!: GameButton;
   private debugToggleButton?: GameButton;
+  private uiDebugOverlay: UiDebugOverlay | undefined;
+  private bottomCommandLayout!: BottomCommandLayout;
   private readonly heroSlots: HeroSlotView[] = [];
   private readonly persistentButtons: GameButton[] = [];
   private statePanel: Panel | undefined;
@@ -279,78 +293,130 @@ export class PrototypeScene extends Phaser.Scene {
       alpha: 0.97,
     });
     this.commandPanel.container.setDepth(UI_METRICS.depth.commandDeck);
-    const controls = UI_METRICS.layout.commandDeckContent;
-    const deckTitle = this.add
-      .text(area.width / 2, 9, '星核指挥台 · 英雄编队', {
-        color: toCssColor(UI_COLORS.star),
-        fontFamily: UI_FONT_FAMILY,
-        fontSize: `${UI_FONT_SIZES.small}px`,
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
-    this.commandPanel.content.add(deckTitle);
+    this.bottomCommandLayout = createBottomCommandLayout(PROTOTYPE_LEVEL.heroSlots);
+    const layout = this.bottomCommandLayout;
+    const sectionPanels = [
+      new Panel(this, layout.columns.left.x, layout.columns.left.y, {
+        width: layout.columns.left.width,
+        height: layout.columns.left.height,
+        alpha: 0.42,
+      }),
+      new Panel(this, layout.columns.center.x, layout.columns.center.y, {
+        width: layout.columns.center.width,
+        height: layout.columns.center.height,
+        tone: 'accent',
+        alpha: 0.32,
+      }),
+      new Panel(this, layout.columns.right.x, layout.columns.right.y, {
+        width: layout.columns.right.width,
+        height: layout.columns.right.height,
+        tone: 'accent',
+        alpha: 0.48,
+      }),
+    ];
+    this.commandPanel.content.add(sectionPanels.map((panel) => panel.container));
+    const sectionLabels = [
+      new SectionLabel(
+        this,
+        layout.sectionLabels.left.x,
+        layout.sectionLabels.left.y,
+        '资源与技能',
+      ),
+      new SectionLabel(
+        this,
+        layout.sectionLabels.center.x,
+        layout.sectionLabels.center.y,
+        '英雄编队',
+      ),
+      new SectionLabel(
+        this,
+        layout.sectionLabels.right.x,
+        layout.sectionLabels.right.y,
+        '主要操作',
+      ),
+    ];
+    this.commandPanel.content.add(sectionLabels.map((label) => label.text));
 
     for (let index = 0; index < PROTOTYPE_LEVEL.heroSlots.length; index += 1) {
-      const position = PROTOTYPE_LEVEL.heroSlots[index];
+      const position = layout.heroBoard.slotCenters[index];
       if (position === undefined) continue;
       const slotView = new HeroSlotView(
         this,
         index,
-        position.x - area.x,
-        position.y - area.y,
+        position.x,
+        position.y,
       );
       this.commandPanel.content.add(slotView.container);
       this.heroSlots.push(slotView);
     }
 
-    this.energyDisplay = new ResourceDisplay(this, controls.energyX, controls.resourceY, {
+    const energyCenter = centerOf(layout.left.energy);
+    this.energyDisplay = new ResourceDisplay(this, energyCenter.x, energyCenter.y, {
       label: '战斗能量',
       icon: '✦',
-      width: 150,
+      width: layout.left.energy.width,
       accentColor: UI_COLORS.energy,
     });
-    this.costDisplay = new ResourceDisplay(this, controls.costX, controls.resourceY, {
+    const costCenter = centerOf(layout.left.summonCost);
+    this.costDisplay = new ResourceDisplay(this, costCenter.x, costCenter.y, {
       label: '召唤费用',
       icon: '◇',
-      width: 150,
+      width: layout.left.summonCost.width,
       accentColor: UI_COLORS.star,
     });
-    this.formationDisplay = new ResourceDisplay(this, controls.formationX, controls.resourceY, {
+    const skillStatusCenter = centerOf(layout.left.skillStatus);
+    this.skillStatusDisplay = new ResourceDisplay(
+      this,
+      skillStatusCenter.x,
+      skillStatusCenter.y,
+      {
+        label: '技能状态',
+        icon: '✧',
+        width: layout.left.skillStatus.width,
+        accentColor: UI_COLORS.textSecondary,
+      },
+    );
+    this.skillStatusDisplay.setValue('尚未开放', false);
+    const formationCenter = centerOf(layout.right.formation);
+    this.formationDisplay = new ResourceDisplay(this, formationCenter.x, formationCenter.y, {
       label: '英雄编制',
       icon: '◆',
-      width: 150,
+      width: layout.right.formation.width,
       accentColor: UI_COLORS.primary,
     });
-    this.progressDisplay = new ResourceDisplay(this, controls.progressX, controls.resourceY, {
+    const progressCenter = centerOf(layout.right.expansionProgress);
+    this.progressDisplay = new ResourceDisplay(this, progressCenter.x, progressCenter.y, {
       label: '扩格进度',
       icon: '⬡',
-      width: 190,
+      width: layout.right.expansionProgress.width,
       accentColor: UI_COLORS.star,
     });
     this.commandPanel.content.add([
       this.energyDisplay.container,
       this.costDisplay.container,
+      this.skillStatusDisplay.container,
       this.formationDisplay.container,
       this.progressDisplay.container,
     ]);
 
-    this.summonButton = new GameButton(this, controls.summonX, controls.actionY, {
+    const summonCenter = centerOf(layout.right.summon);
+    this.summonButton = new GameButton(this, summonCenter.x, summonCenter.y, {
       label: '召唤英雄',
       subtitle: '消耗：5',
       icon: '✦',
-      width: 220,
-      height: UI_METRICS.button.primaryHeight,
+      width: layout.right.summon.width,
+      height: layout.right.summon.height,
       variant: 'primary',
       keyboardKeyCode: Phaser.Input.Keyboard.KeyCodes.S,
       onPress: () => this.handleSummon(),
     });
-    this.skillButton = this.createReservedButton(controls.skillX, '技能预览', () => {
+    this.skillButton = this.createReservedButton(layout.left.skillPreview, '技能预览', () => {
       this.battle.openSkillSelection();
       this.audio.setPaused(true);
       this.refreshUi(this.battle.getSnapshot());
     });
-    const mergeButton = this.createReservedButton(controls.mergeX, '合成', () => undefined);
-    const rebuildButton = this.createReservedButton(controls.rebuildX, '重构', () => undefined);
+    const mergeButton = this.createReservedButton(layout.right.merge, '合成', () => undefined);
+    const rebuildButton = this.createReservedButton(layout.right.rebuild, '重构', () => undefined);
     mergeButton.setEnabled(false);
     rebuildButton.setEnabled(false);
     this.commandPanel.content.add([
@@ -365,28 +431,37 @@ export class PrototypeScene extends Phaser.Scene {
       mergeButton,
       rebuildButton,
     );
+    const skillHelperCenter = centerOf(layout.left.helperText);
+    const skillHelperText = this.add
+      .text(skillHelperCenter.x, skillHelperCenter.y, '技能购买将在后续阶段开放', {
+        color: toCssColor(UI_COLORS.textMuted),
+        fontFamily: UI_FONT_FAMILY,
+        fontSize: `${UI_FONT_SIZES.helper}px`,
+      })
+      .setOrigin(0.5);
     this.summonHintText = this.add
-      .text(area.width / 2, controls.hintY, '', {
+      .text(centerOf(layout.right.helperText).x, centerOf(layout.right.helperText).y, '', {
+        align: 'center',
         color: toCssColor(UI_COLORS.textHint),
         fontFamily: UI_FONT_FAMILY,
-        fontSize: `${UI_FONT_SIZES.small}px`,
-        fontStyle: 'bold',
+        fontSize: `${UI_FONT_SIZES.helper}px`,
+        wordWrap: { width: layout.right.helperText.width },
       })
       .setOrigin(0.5, 0.5);
-    this.commandPanel.content.add(this.summonHintText);
+    this.commandPanel.content.add([skillHelperText, this.summonHintText]);
   }
 
   private createReservedButton(
-    x: number,
+    bounds: UiRect,
     label: string,
     onPress: () => void,
   ): GameButton {
-    return new GameButton(this, x, 101, {
+    const center = centerOf(bounds);
+    return new GameButton(this, center.x, center.y, {
       label,
-      subtitle: label === '技能预览' ? '状态占位' : '后续开放',
-      width: 144,
-      height: 58,
-      variant: 'ghost',
+      width: bounds.width,
+      height: bounds.height,
+      variant: 'secondary',
       onPress,
     });
   }
@@ -395,6 +470,9 @@ export class PrototypeScene extends Phaser.Scene {
     if (!import.meta.env.DEV) {
       this.debugVisible = false;
       return;
+    }
+    if (isUiDebugEnabled(window.location.search, import.meta.env.DEV)) {
+      this.uiDebugOverlay = new UiDebugOverlay(this, this.bottomCommandLayout);
     }
     this.debugText = this.add
       .text(1_038, 88, '', {
@@ -526,6 +604,14 @@ export class PrototypeScene extends Phaser.Scene {
     this.energyDisplay.setValue(uiState.energy, !force);
     this.costDisplay.setValue(uiState.summonCost, !force);
     this.costDisplay.setInsufficient(snapshot.energy < snapshot.currentSummonCost);
+    this.skillStatusDisplay.setValue(
+      snapshot.state === BattleState.Running
+        ? '入口可查看'
+        : snapshot.state === BattleState.SkillSelection
+          ? '预览中'
+          : '战斗中开放',
+      false,
+    );
     this.formationDisplay.setValue(
       `${snapshot.heroCount} / ${snapshot.unlockedSlots}`,
       false,
@@ -925,9 +1011,11 @@ export class PrototypeScene extends Phaser.Scene {
     this.coreHealthBar?.destroy();
     this.energyDisplay?.destroy();
     this.costDisplay?.destroy();
+    this.skillStatusDisplay?.destroy();
     this.progressDisplay?.destroy();
     this.formationDisplay?.destroy();
     this.notice?.destroy();
+    this.uiDebugOverlay?.destroy();
     this.battlefieldView?.destroy();
     this.audio?.destroy();
     this.topPanel?.destroy();
@@ -947,6 +1035,7 @@ export class PrototypeScene extends Phaser.Scene {
     this.debugElapsedMs = 0;
     this.visibilitySuspended = false;
     this.windowBlurred = false;
+    this.uiDebugOverlay = undefined;
     this.enemyProgressMonitor.reset();
   }
 }

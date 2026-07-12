@@ -7,13 +7,21 @@ import {
   EnemyVisualRegistry,
   type HeroVisualDefinition,
   HeroVisualRegistry,
+  resolveHeroBodyScale,
   selectEnemyBattleVisual,
   selectHeroBattleVisual,
 } from '../src/presentation/VisualDefinitions';
 import {
   ENEMY_VISUAL_DEFINITIONS,
   HERO_VISUAL_DEFINITIONS,
+  HERO_VISUAL_REGISTRY,
 } from '../src/data/visualDefinitions';
+import {
+  GAME_ASSET_MANIFEST,
+  HERO_BATTLE_1_STAR_ASSET_IDS,
+} from '../src/assets/AssetManifest';
+import { HERO_DEFINITIONS_BY_ID } from '../src/data/heroDefinitions';
+import { UI_METRICS } from '../src/ui/theme/uiMetrics';
 
 const TEST_HERO: HeroVisualDefinition = {
   heroId: 'hero-a',
@@ -63,6 +71,87 @@ function availableRegistry(assetIds: readonly string[]): AssetRegistry {
 }
 
 describe('英雄视觉选择', () => {
+  it('正式纹理使用独立scale，程序fallback保持原有可读尺寸', () => {
+    const maximumDisplaySize = UI_METRICS.slot.heroMaximumDisplaySize;
+    expect(maximumDisplaySize).toBe(72);
+    expect(resolveHeroBodyScale('texture', 0.056, 1_254, 1_254, maximumDisplaySize))
+      .toBeCloseTo(0.056);
+    expect(resolveHeroBodyScale('programmatic', 0.056, 28, 28, maximumDisplaySize))
+      .toBe(1);
+    expect(resolveHeroBodyScale('texture', 1, 2_000, 1_000, maximumDisplaySize))
+      .toBe(0.036);
+  });
+
+  it('四名运行时英雄在1～4星均选择已加载的1星资源作为当前回退节点', () => {
+    const assets = new AssetRegistry(GAME_ASSET_MANIFEST);
+    for (const entry of GAME_ASSET_MANIFEST.entries) {
+      assets.markQueued(entry.assetId);
+      assets.markAvailable(entry.assetId);
+    }
+
+    const expectedAssets = new Map([
+      ['gale-hunter', HERO_BATTLE_1_STAR_ASSET_IDS.galeHunter],
+      ['ember-mage', HERO_BATTLE_1_STAR_ASSET_IDS.emberMage],
+      ['stone-vanguard', HERO_BATTLE_1_STAR_ASSET_IDS.stoneVanguard],
+      ['starlight-priest', HERO_BATTLE_1_STAR_ASSET_IDS.starlightPriest],
+    ]);
+    for (const [heroId, assetId] of expectedAssets) {
+      const definition = HERO_VISUAL_REGISTRY.get(heroId);
+      expect(definition.battle3StarAssetId).toBeUndefined();
+      expect(definition.battle4StarAssetId).toBeUndefined();
+      for (const star of [1, 2, 3, 4] as const) {
+        expect(
+          selectHeroBattleVisual(definition, star, assets),
+        ).toMatchObject({ kind: 'texture', assetId, sourceTier: 1 });
+      }
+    }
+  });
+
+  it('四名英雄的scale、脚底锚点和格位偏移完全来自独立视觉定义', () => {
+    expect(HERO_VISUAL_REGISTRY.get('gale-hunter')).toMatchObject({
+      defaultScale: 0.056,
+      footAnchor: { x: 0.5, y: 0.86 },
+      slotOffset: { x: 0, y: 0 },
+    });
+    expect(HERO_VISUAL_REGISTRY.get('ember-mage')).toMatchObject({
+      defaultScale: 0.055,
+      footAnchor: { x: 0.5, y: 0.88 },
+      slotOffset: { x: 0, y: 0 },
+    });
+    expect(HERO_VISUAL_REGISTRY.get('stone-vanguard')).toMatchObject({
+      defaultScale: 0.053,
+      footAnchor: { x: 0.5, y: 0.85 },
+      slotOffset: { x: 1, y: 0 },
+    });
+    expect(HERO_VISUAL_REGISTRY.get('starlight-priest')).toMatchObject({
+      defaultScale: 0.054,
+      footAnchor: { x: 0.5, y: 0.88 },
+      slotOffset: { x: 1, y: 0 },
+    });
+  });
+
+  it('启用资源失败或不可用时四名英雄均安全回退程序图形', () => {
+    const unavailable = new AssetRegistry(GAME_ASSET_MANIFEST);
+    for (const heroId of HERO_DEFINITIONS_BY_ID.keys()) {
+      expect(
+        selectHeroBattleVisual(HERO_VISUAL_REGISTRY.get(heroId), 1, unavailable).kind,
+      ).toBe('programmatic');
+    }
+  });
+
+  it('视觉选择不会修改英雄玩法定义、星级或攻击配置', () => {
+    const before = JSON.stringify([...HERO_DEFINITIONS_BY_ID.values()]);
+    const assets = new AssetRegistry(GAME_ASSET_MANIFEST);
+    for (const entry of GAME_ASSET_MANIFEST.entries) {
+      assets.markQueued(entry.assetId);
+      assets.markAvailable(entry.assetId);
+    }
+    for (const heroId of HERO_DEFINITIONS_BY_ID.keys()) {
+      selectHeroBattleVisual(HERO_VISUAL_REGISTRY.get(heroId), 1, assets);
+    }
+    expect(JSON.stringify([...HERO_DEFINITIONS_BY_ID.values()])).toBe(before);
+  });
+
   it('所有资源禁用时使用程序 fallback', () => {
     const assets = new AssetRegistry({
       version: 1,
@@ -155,5 +244,7 @@ describe('怪物视觉定义', () => {
   it('森灵唤师只有视觉扩展位，不进入当前四英雄逻辑定义', () => {
     const registry = new HeroVisualRegistry(HERO_VISUAL_DEFINITIONS);
     expect(registry.get('forest-summoner').role).toBe('summoner');
+    expect(registry.get('forest-summoner').battle1StarAssetId).toBeUndefined();
+    expect(HERO_DEFINITIONS_BY_ID.has('forest-summoner')).toBe(false);
   });
 });
